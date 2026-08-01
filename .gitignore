@@ -1,0 +1,29 @@
+# Dependencies
+node_modules
+
+# Logs
+*.log
+
+# Build
+dist
+.next
+out
+coverage
+
+# Environment
+.env
+.env.local
+.env.*
+
+# IDE
+.vscode/settings.json
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Turbo
+.turbo
+
+# pnpm
+pnpm-lock.yaml
