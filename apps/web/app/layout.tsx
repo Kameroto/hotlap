@@ -1,10 +1,14 @@
 import type { Metadata } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
+import {
+  Geist,
+  Geist_Mono,
+} from "next/font/google";
 
 import "./globals.css";
 
-import Navbar from "@/components/layout/Navbar";
 import Footer from "@/components/layout/Footer";
+import Navbar from "@/components/layout/Navbar";
+import StoreHydration from "@/components/providers/StoreHydration";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -17,8 +21,13 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "HotLap",
-  description: "Premium RC Cars, Parts & Events",
+  title: {
+    default: "HotLap",
+    template: "%s | HotLap",
+  },
+
+  description:
+    "Premium RC cars, performance parts, 3D printed accessories, merchandise, and RC events.",
 };
 
 export default function RootLayout({
@@ -31,11 +40,13 @@ export default function RootLayout({
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
-        <Navbar />
+        <StoreHydration>
+          <Navbar />
 
-        {children}
+          {children}
 
-        <Footer />
+          <Footer />
+        </StoreHydration>
       </body>
     </html>
   );

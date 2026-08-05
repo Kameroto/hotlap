@@ -1,10 +1,20 @@
+"use client";
+
 import Link from "next/link";
-import { Heart, ShoppingCart } from "lucide-react";
+import { Heart } from "lucide-react";
+
+import AddToCartButton from "@/components/cart/AddToCartButton";
 
 import ProductImage from "@/components/products/ProductImage";
 import ProductPrice from "@/components/products/ProductPrice";
 import ProductRating from "@/components/products/ProductRating";
+
 import { Button } from "@/components/ui/button";
+
+import {
+  useWishlistStore,
+} from "@/store/wishlist-store";
+
 import type { Product } from "@/types/product";
 
 type ProductCardProps = {
@@ -14,8 +24,30 @@ type ProductCardProps = {
 export default function ProductCard({
   product,
 }: ProductCardProps) {
+  const wishlistProductIds =
+    useWishlistStore(
+      (state) =>
+        state.wishlistProductIds,
+    );
+
+  const hasHydrated = useWishlistStore(
+    (state) => state.hasHydrated,
+  );
+
+  const toggleWishlist =
+    useWishlistStore(
+      (state) =>
+        state.toggleWishlist,
+    );
+
   const primaryImage = product.images[0];
-  const isInStock = product.stockQuantity > 0;
+
+  const isInStock =
+    product.stockQuantity > 0;
+
+  const productIsInWishlist =
+    hasHydrated &&
+    wishlistProductIds.includes(product.id);
 
   return (
     <article className="group overflow-hidden rounded-2xl border bg-card text-card-foreground shadow-sm transition-all duration-300 hover:-translate-y-1 hover:shadow-xl">
@@ -26,7 +58,10 @@ export default function ProductCard({
         >
           <ProductImage
             src={primaryImage?.url}
-            alt={primaryImage?.alt ?? product.name}
+            alt={
+              primaryImage?.alt ??
+              product.name
+            }
             badges={product.badges}
           />
         </Link>
@@ -35,10 +70,31 @@ export default function ProductCard({
           type="button"
           variant="outline"
           size="icon"
-          aria-label={`Add ${product.name} to wishlist`}
-          className="absolute top-4 right-4 z-10 rounded-full bg-background/90 shadow-sm backdrop-blur"
+          disabled={!hasHydrated}
+          aria-label={
+            productIsInWishlist
+              ? `Remove ${product.name} from wishlist`
+              : `Add ${product.name} to wishlist`
+          }
+          aria-pressed={
+            productIsInWishlist
+          }
+          onClick={() =>
+            toggleWishlist(product.id)
+          }
+          className={`absolute top-4 right-4 z-10 rounded-full shadow-sm backdrop-blur ${
+            productIsInWishlist
+              ? "border-red-200 bg-red-50 text-red-600 hover:bg-red-100"
+              : "bg-background/90"
+          }`}
         >
-          <Heart className="h-4 w-4" />
+          <Heart
+            className={`h-4 w-4 ${
+              productIsInWishlist
+                ? "fill-current"
+                : ""
+            }`}
+          />
         </Button>
       </div>
 
@@ -63,21 +119,27 @@ export default function ProductCard({
         <div className="mt-4">
           <ProductRating
             rating={product.rating}
-            reviewCount={product.reviewCount}
+            reviewCount={
+              product.reviewCount
+            }
           />
         </div>
 
         <div className="mt-4">
           <ProductPrice
             price={product.price}
-            compareAtPrice={product.compareAtPrice}
+            compareAtPrice={
+              product.compareAtPrice
+            }
             currency={product.currency}
           />
         </div>
 
         <p
           className={`mt-3 text-sm font-medium ${
-            isInStock ? "text-green-600" : "text-red-600"
+            isInStock
+              ? "text-green-600"
+              : "text-red-600"
           }`}
         >
           {isInStock
@@ -85,14 +147,14 @@ export default function ProductCard({
             : "Out of stock"}
         </p>
 
-        <Button
-          type="button"
-          disabled={!isInStock}
+        <AddToCartButton
+          productId={product.id}
+          productName={product.name}
+          stockQuantity={
+            product.stockQuantity
+          }
           className="mt-5 w-full"
-        >
-          <ShoppingCart className="h-4 w-4" />
-          {isInStock ? "Add to Cart" : "Unavailable"}
-        </Button>
+        />
       </div>
     </article>
   );
