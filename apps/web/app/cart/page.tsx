@@ -314,13 +314,17 @@ export default function CartPage() {
                   </div>
                 </div>
 
-                <Button
-                  type="button"
-                  size="lg"
-                  className="mt-6 w-full"
-                >
-                  Proceed to Checkout
-                </Button>
+                <Link
+  href="/checkout"
+  className={cn(
+    buttonVariants({
+      size: "lg",
+    }),
+    "mt-6 w-full",
+  )}
+>
+  Proceed to Checkout
+</Link>
 
                 <Link
                   href="/products"
