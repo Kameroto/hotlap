@@ -1,0 +1,40 @@
+<svg
+  xmlns="http://www.w3.org/2000/svg"
+  width="800"
+  height="600"
+  viewBox="0 0 800 600"
+  fill="none"
+>
+  <rect width="800" height="600" fill="#F4F4F5" />
+  <path
+    d="M232 359L273 278C282 260 301 249 321 249H497C518 249 537 262 545 282L576 359"
+    stroke="#A1A1AA"
+    stroke-width="18"
+    stroke-linecap="round"
+    stroke-linejoin="round"
+  />
+  <rect
+    x="200"
+    y="350"
+    width="400"
+    height="100"
+    rx="28"
+    stroke="#71717A"
+    stroke-width="18"
+  />
+  <circle cx="282" cy="454" r="45" fill="#52525B" />
+  <circle cx="518" cy="454" r="45" fill="#52525B" />
+  <circle cx="282" cy="454" r="20" fill="#D4D4D8" />
+  <circle cx="518" cy="454" r="20" fill="#D4D4D8" />
+  <text
+    x="400"
+    y="150"
+    text-anchor="middle"
+    font-family="Arial, sans-serif"
+    font-size="32"
+    font-weight="700"
+    fill="#71717A"
+  >
+    HotLap Product
+  </text>
+</svg>
