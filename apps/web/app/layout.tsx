@@ -3,6 +3,7 @@ import {
   Geist,
   Geist_Mono,
 } from "next/font/google";
+import { Toaster } from "sonner";
 
 import "./globals.css";
 
@@ -46,6 +47,12 @@ export default function RootLayout({
           {children}
 
           <Footer />
+
+          <Toaster
+            richColors
+            closeButton
+            position="top-right"
+          />
         </StoreHydration>
       </body>
     </html>

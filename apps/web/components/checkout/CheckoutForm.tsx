@@ -1,7 +1,6 @@
 "use client";
 
 import {
-  useMemo,
   useState,
 } from "react";
 
@@ -9,10 +8,7 @@ import Link from "next/link";
 
 import {
   CheckCircle2,
-  PackageCheck,
   ShoppingBag,
-  Truck,
-  Zap,
 } from "lucide-react";
 
 import {
@@ -23,11 +19,12 @@ import {
 
 import { zodResolver } from "@hookform/resolvers/zod";
 
+import CheckoutOrderSummary from "@/components/checkout/CheckoutOrderSummary";
+import ShippingMethodSelector from "@/components/checkout/ShippingMethodSelector";
+
 import Container from "@/components/layout/Container";
-import ProductImage from "@/components/products/ProductImage";
 
 import {
-  Button,
   buttonVariants,
 } from "@/components/ui/button";
 
@@ -39,10 +36,14 @@ import {
 } from "@/lib/checkout-schema";
 
 import {
-  formatCurrency,
-} from "@/lib/format-currency";
+  validatePromotion,
+} from "@/lib/promotions";
 
-import { cn } from "@/lib/utils";
+import {
+  getShippingMethod,
+  type ShippingMethodId,
+} from "@/lib/shipping";
+
 import { useCartStore } from "@/store/cart-store";
 
 const indianStates = [
@@ -80,8 +81,11 @@ const indianStates = [
   "Puducherry",
 ];
 
-const STANDARD_SHIPPING_COST = 0;
-const EXPRESS_SHIPPING_COST = 499;
+const inputClassName =
+  "mt-2 h-11 w-full rounded-lg border bg-background px-3 text-sm outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/20";
+
+const textareaClassName =
+  "mt-2 min-h-28 w-full resize-y rounded-lg border bg-background px-3 py-3 text-sm outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/20";
 
 type FieldErrorMessageProps = {
   error?: FieldError;
@@ -101,19 +105,21 @@ function FieldErrorMessage({
   );
 }
 
-const inputClassName =
-  "mt-2 h-11 w-full rounded-lg border bg-background px-3 text-sm outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/20";
-
-const textareaClassName =
-  "mt-2 min-h-28 w-full resize-y rounded-lg border bg-background px-3 py-3 text-sm outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/20";
-
 export default function CheckoutForm() {
-  const [completedOrderNumber, setCompletedOrderNumber] =
-    useState<string | null>(null);
+  const [
+    completedOrderNumber,
+    setCompletedOrderNumber,
+  ] = useState<string | null>(null);
 
   const items = useCartStore(
     (state) => state.items,
   );
+
+  const appliedPromotionCode =
+    useCartStore(
+      (state) =>
+        state.appliedPromotionCode,
+    );
 
   const hasHydrated = useCartStore(
     (state) => state.hasHydrated,
@@ -124,15 +130,17 @@ export default function CheckoutForm() {
   );
 
   const {
-  register,
-  handleSubmit,
-  control,
-  formState: {
-    errors,
-    isSubmitting,
-  },
-} = useForm<CheckoutFormValues>({
-    resolver: zodResolver(checkoutSchema),
+    register,
+    handleSubmit,
+    control,
+    formState: {
+      errors,
+      isSubmitting,
+    },
+  } = useForm<CheckoutFormValues>({
+    resolver: zodResolver(
+      checkoutSchema,
+    ),
 
     defaultValues: {
       email: "",
@@ -150,48 +158,75 @@ export default function CheckoutForm() {
     },
   });
 
-  const selectedShippingMethod = useWatch({
-  control,
-  name: "shippingMethod",
-});
+  const selectedShippingMethod =
+    useWatch({
+      control,
+      name: "shippingMethod",
+    });
 
-  const cartProducts = useMemo(
-    () =>
-      items.flatMap((cartItem) => {
-        const product = products.find(
-          (candidateProduct) =>
-            candidateProduct.id ===
-            cartItem.productId,
-        );
+  const cartProducts =
+    items.flatMap((cartItem) => {
+      const product = products.find(
+        (candidateProduct) =>
+          candidateProduct.id ===
+          cartItem.productId,
+      );
 
-        if (!product) {
-          return [];
-        }
+      if (!product) {
+        return [];
+      }
 
-        return [
-          {
-            product,
-            quantity: cartItem.quantity,
-          },
-        ];
-      }),
-    [items],
-  );
+      return [
+        {
+          product,
+          quantity: cartItem.quantity,
+        },
+      ];
+    });
 
-  const subtotal = cartProducts.reduce(
-    (total, cartProduct) =>
-      total +
-      cartProduct.product.price *
-        cartProduct.quantity,
-    0,
-  );
+  const subtotal =
+    cartProducts.reduce(
+      (total, cartProduct) =>
+        total +
+        cartProduct.product.price *
+          cartProduct.quantity,
+      0,
+    );
+
+  const promotionResult =
+    appliedPromotionCode
+      ? validatePromotion(
+          appliedPromotionCode,
+          subtotal,
+        )
+      : null;
+
+  const discountAmount =
+    promotionResult?.isValid
+      ? promotionResult.discountAmount
+      : 0;
+
+  const subtotalAfterDiscount =
+    Math.max(
+      subtotal - discountAmount,
+      0,
+    );
+
+  const shippingMethod =
+    getShippingMethod(
+      (
+        selectedShippingMethod ??
+        "standard"
+      ) as ShippingMethodId,
+      subtotal,
+    );
 
   const shippingCost =
-    selectedShippingMethod === "express"
-      ? EXPRESS_SHIPPING_COST
-      : STANDARD_SHIPPING_COST;
+    shippingMethod.cost;
 
-  const total = subtotal + shippingCost;
+  const total =
+    subtotalAfterDiscount +
+    shippingCost;
 
   async function submitCheckout(
     values: CheckoutFormValues,
@@ -201,22 +236,33 @@ export default function CheckoutForm() {
     });
 
     const orderNumber = `HL-${crypto
-  .randomUUID()
-  .replaceAll("-", "")
-  .slice(0, 8)
-  .toUpperCase()}`;
+      .randomUUID()
+      .replaceAll("-", "")
+      .slice(0, 8)
+      .toUpperCase()}`;
 
-    console.info("Temporary checkout order", {
-      orderNumber,
-      customer: values,
-      cartProducts,
-      subtotal,
-      shippingCost,
-      total,
-    });
+    console.info(
+      "Temporary checkout order",
+      {
+        orderNumber,
+        customer: values,
+        cartProducts,
+        appliedPromotionCode:
+          promotionResult?.isValid
+            ? appliedPromotionCode
+            : null,
+        subtotal,
+        discountAmount,
+        shippingMethod,
+        total,
+      },
+    );
 
     clearCart();
-    setCompletedOrderNumber(orderNumber);
+
+    setCompletedOrderNumber(
+      orderNumber,
+    );
   }
 
   if (!hasHydrated) {
@@ -248,7 +294,8 @@ export default function CheckoutForm() {
           </h1>
 
           <p className="mt-5 text-muted-foreground">
-            Your temporary HotLap order number is:
+            Your temporary HotLap order
+            number is:
           </p>
 
           <p className="mt-2 text-xl font-bold">
@@ -256,9 +303,8 @@ export default function CheckoutForm() {
           </p>
 
           <p className="mx-auto mt-5 max-w-lg text-muted-foreground">
-            This is currently a frontend demonstration.
-            The backend will later store the order and
-            send confirmation details.
+            The backend will later store this
+            order and send confirmation details.
           </p>
 
           <div className="mt-8 flex flex-col justify-center gap-3 sm:flex-row">
@@ -296,7 +342,7 @@ export default function CheckoutForm() {
           </h1>
 
           <p className="mx-auto mt-3 max-w-md text-muted-foreground">
-            Add products to your cart before continuing
+            Add products before continuing
             to checkout.
           </p>
 
@@ -314,7 +360,9 @@ export default function CheckoutForm() {
   return (
     <Container>
       <form
-        onSubmit={handleSubmit(submitCheckout)}
+        onSubmit={handleSubmit(
+          submitCheckout,
+        )}
         noValidate
       >
         <div className="grid gap-10 lg:grid-cols-[1fr_420px]">
@@ -325,7 +373,8 @@ export default function CheckoutForm() {
               </h2>
 
               <p className="mt-2 text-sm text-muted-foreground">
-                We’ll use these details for order updates.
+                We’ll use these details for
+                order updates.
               </p>
 
               <div className="mt-6 grid gap-5 sm:grid-cols-2">
@@ -341,7 +390,9 @@ export default function CheckoutForm() {
                     id="email"
                     type="email"
                     autoComplete="email"
-                    className={inputClassName}
+                    className={
+                      inputClassName
+                    }
                     {...register("email")}
                   />
 
@@ -363,7 +414,9 @@ export default function CheckoutForm() {
                     type="tel"
                     inputMode="numeric"
                     autoComplete="tel"
-                    className={inputClassName}
+                    className={
+                      inputClassName
+                    }
                     {...register("phone")}
                   />
 
@@ -391,12 +444,18 @@ export default function CheckoutForm() {
                   <input
                     id="firstName"
                     autoComplete="given-name"
-                    className={inputClassName}
-                    {...register("firstName")}
+                    className={
+                      inputClassName
+                    }
+                    {...register(
+                      "firstName",
+                    )}
                   />
 
                   <FieldErrorMessage
-                    error={errors.firstName}
+                    error={
+                      errors.firstName
+                    }
                   />
                 </div>
 
@@ -411,12 +470,18 @@ export default function CheckoutForm() {
                   <input
                     id="lastName"
                     autoComplete="family-name"
-                    className={inputClassName}
-                    {...register("lastName")}
+                    className={
+                      inputClassName
+                    }
+                    {...register(
+                      "lastName",
+                    )}
                   />
 
                   <FieldErrorMessage
-                    error={errors.lastName}
+                    error={
+                      errors.lastName
+                    }
                   />
                 </div>
 
@@ -431,12 +496,18 @@ export default function CheckoutForm() {
                   <input
                     id="addressLine1"
                     autoComplete="address-line1"
-                    className={inputClassName}
-                    {...register("addressLine1")}
+                    className={
+                      inputClassName
+                    }
+                    {...register(
+                      "addressLine1",
+                    )}
                   />
 
                   <FieldErrorMessage
-                    error={errors.addressLine1}
+                    error={
+                      errors.addressLine1
+                    }
                   />
                 </div>
 
@@ -445,7 +516,8 @@ export default function CheckoutForm() {
                     htmlFor="addressLine2"
                     className="text-sm font-medium"
                   >
-                    Apartment, building, landmark
+                    Apartment, building,
+                    landmark
                     <span className="ml-1 text-muted-foreground">
                       (optional)
                     </span>
@@ -454,12 +526,12 @@ export default function CheckoutForm() {
                   <input
                     id="addressLine2"
                     autoComplete="address-line2"
-                    className={inputClassName}
-                    {...register("addressLine2")}
-                  />
-
-                  <FieldErrorMessage
-                    error={errors.addressLine2}
+                    className={
+                      inputClassName
+                    }
+                    {...register(
+                      "addressLine2",
+                    )}
                   />
                 </div>
 
@@ -474,7 +546,9 @@ export default function CheckoutForm() {
                   <input
                     id="city"
                     autoComplete="address-level2"
-                    className={inputClassName}
+                    className={
+                      inputClassName
+                    }
                     {...register("city")}
                   />
 
@@ -494,21 +568,25 @@ export default function CheckoutForm() {
                   <select
                     id="state"
                     autoComplete="address-level1"
-                    className={inputClassName}
+                    className={
+                      inputClassName
+                    }
                     {...register("state")}
                   >
                     <option value="">
                       Select state
                     </option>
 
-                    {indianStates.map((state) => (
-                      <option
-                        key={state}
-                        value={state}
-                      >
-                        {state}
-                      </option>
-                    ))}
+                    {indianStates.map(
+                      (state) => (
+                        <option
+                          key={state}
+                          value={state}
+                        >
+                          {state}
+                        </option>
+                      ),
+                    )}
                   </select>
 
                   <FieldErrorMessage
@@ -528,87 +606,30 @@ export default function CheckoutForm() {
                     id="postalCode"
                     inputMode="numeric"
                     autoComplete="postal-code"
-                    className={inputClassName}
-                    {...register("postalCode")}
+                    className={
+                      inputClassName
+                    }
+                    {...register(
+                      "postalCode",
+                    )}
                   />
 
                   <FieldErrorMessage
-                    error={errors.postalCode}
+                    error={
+                      errors.postalCode
+                    }
                   />
                 </div>
               </div>
             </section>
 
-            <section className="rounded-2xl border p-6">
-              <h2 className="text-2xl font-semibold">
-                Shipping Method
-              </h2>
-
-              <div className="mt-6 space-y-4">
-                <label className="flex cursor-pointer gap-4 rounded-xl border p-4 transition has-checked:border-primary has-checked:bg-primary/5">
-                  <input
-                    type="radio"
-                    value="standard"
-                    className="mt-1"
-                    {...register("shippingMethod")}
-                  />
-
-                  <Truck className="mt-0.5 h-5 w-5" />
-
-                  <span className="flex flex-1 justify-between gap-4">
-                    <span>
-                      <span className="block font-semibold">
-                        Standard Delivery
-                      </span>
-
-                      <span className="mt-1 block text-sm text-muted-foreground">
-                        Estimated delivery in 4–7 business
-                        days.
-                      </span>
-                    </span>
-
-                    <span className="font-semibold text-green-700">
-                      Free
-                    </span>
-                  </span>
-                </label>
-
-                <label className="flex cursor-pointer gap-4 rounded-xl border p-4 transition has-checked:border-primary has-checked:bg-primary/5">
-                  <input
-                    type="radio"
-                    value="express"
-                    className="mt-1"
-                    {...register("shippingMethod")}
-                  />
-
-                  <Zap className="mt-0.5 h-5 w-5" />
-
-                  <span className="flex flex-1 justify-between gap-4">
-                    <span>
-                      <span className="block font-semibold">
-                        Express Delivery
-                      </span>
-
-                      <span className="mt-1 block text-sm text-muted-foreground">
-                        Estimated delivery in 1–3 business
-                        days.
-                      </span>
-                    </span>
-
-                    <span className="font-semibold">
-                      {formatCurrency(
-                        EXPRESS_SHIPPING_COST,
-                        "INR",
-                      )}
-                    </span>
-                  </span>
-                </label>
-              </div>
-
-              <FieldErrorMessage
-                error={errors.shippingMethod}
-              />
-            </section>
+            <ShippingMethodSelector
+              subtotal={subtotal}
+              register={register}
+              error={
+                errors.shippingMethod
+              }
+            />
 
             <section className="rounded-2xl border p-6">
               <label
@@ -619,149 +640,47 @@ export default function CheckoutForm() {
               </label>
 
               <p className="mt-1 text-sm text-muted-foreground">
-                Optional delivery or product instructions.
+                Optional delivery or product
+                instructions.
               </p>
 
               <textarea
                 id="orderNotes"
-                className={textareaClassName}
+                className={
+                  textareaClassName
+                }
                 {...register("orderNotes")}
               />
 
               <FieldErrorMessage
-                error={errors.orderNotes}
+                error={
+                  errors.orderNotes
+                }
               />
             </section>
           </div>
 
-          <aside className="h-fit rounded-2xl border bg-card p-6 lg:sticky lg:top-24">
-            <h2 className="text-2xl font-semibold">
-              Order Summary
-            </h2>
-
-            <div className="mt-6 space-y-5">
-              {cartProducts.map(
-                ({
-                  product,
-                  quantity,
-                }) => {
-                  const primaryImage =
-                    product.images[0];
-
-                  return (
-                    <div
-                      key={product.id}
-                      className="grid grid-cols-[72px_1fr] gap-4"
-                    >
-                      <div className="group overflow-hidden rounded-lg border bg-muted">
-                        <ProductImage
-                          src={primaryImage?.url}
-                          alt={
-                            primaryImage?.alt ??
-                            product.name
-                          }
-                        />
-                      </div>
-
-                      <div className="min-w-0">
-                        <p className="line-clamp-2 font-medium">
-                          {product.name}
-                        </p>
-
-                        <p className="mt-1 text-sm text-muted-foreground">
-                          Quantity: {quantity}
-                        </p>
-
-                        <p className="mt-2 text-sm font-semibold">
-                          {formatCurrency(
-                            product.price * quantity,
-                            product.currency,
-                          )}
-                        </p>
-                      </div>
-                    </div>
-                  );
-                },
-              )}
-            </div>
-
-            <div className="mt-6 space-y-4 border-t pt-6">
-              <div className="flex justify-between text-muted-foreground">
-                <span>Subtotal</span>
-
-                <span>
-                  {formatCurrency(subtotal, "INR")}
-                </span>
-              </div>
-
-              <div className="flex justify-between text-muted-foreground">
-                <span>Shipping</span>
-
-                <span>
-                  {shippingCost === 0
-                    ? "Free"
-                    : formatCurrency(
-                        shippingCost,
-                        "INR",
-                      )}
-                </span>
-              </div>
-
-              <div className="flex justify-between border-t pt-4 text-lg font-bold">
-                <span>Total</span>
-
-                <span>
-                  {formatCurrency(total, "INR")}
-                </span>
-              </div>
-            </div>
-
-            <label className="mt-6 flex items-start gap-3 text-sm">
-              <input
-                type="checkbox"
-                className="mt-1"
-                {...register("acceptTerms")}
-              />
-
-              <span>
-                I agree to the terms, privacy policy,
-                and order conditions.
-              </span>
-            </label>
-
-            <FieldErrorMessage
-              error={errors.acceptTerms}
-            />
-
-            <Button
-              type="submit"
-              size="lg"
-              disabled={isSubmitting}
-              className="mt-6 w-full"
-            >
-              <PackageCheck className="h-5 w-5" />
-
-              {isSubmitting
-                ? "Placing Order..."
-                : `Place Order • ${formatCurrency(
-                    total,
-                    "INR",
-                  )}`}
-            </Button>
-
-            <Link
-              href="/cart"
-              className={cn(
-                buttonVariants({
-                  variant: "outline",
-                  size: "lg",
-                }),
-                "mt-3 w-full",
-              )}
-            >
-              Return to Cart
-            </Link>
-          </aside>
+          <CheckoutOrderSummary
+            cartProducts={cartProducts}
+            subtotal={subtotal}
+            discountAmount={
+              discountAmount
+            }
+            appliedPromotionCode={
+              promotionResult?.isValid
+                ? appliedPromotionCode
+                : null
+            }
+            shippingCost={shippingCost}
+            total={total}
+            register={register}
+            acceptTermsError={
+              errors.acceptTerms
+            }
+            isSubmitting={
+              isSubmitting
+            }
+          />
         </div>
       </form>
     </Container>

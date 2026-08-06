@@ -2,19 +2,14 @@
 
 import Link from "next/link";
 import { Heart } from "lucide-react";
+import { toast } from "sonner";
 
 import AddToCartButton from "@/components/cart/AddToCartButton";
-
 import ProductImage from "@/components/products/ProductImage";
 import ProductPrice from "@/components/products/ProductPrice";
 import ProductRating from "@/components/products/ProductRating";
-
 import { Button } from "@/components/ui/button";
-
-import {
-  useWishlistStore,
-} from "@/store/wishlist-store";
-
+import { useWishlistStore } from "@/store/wishlist-store";
 import type { Product } from "@/types/product";
 
 type ProductCardProps = {
@@ -36,8 +31,7 @@ export default function ProductCard({
 
   const toggleWishlist =
     useWishlistStore(
-      (state) =>
-        state.toggleWishlist,
+      (state) => state.toggleWishlist,
     );
 
   const primaryImage = product.images[0];
@@ -48,6 +42,30 @@ export default function ProductCard({
   const productIsInWishlist =
     hasHydrated &&
     wishlistProductIds.includes(product.id);
+
+  function handleWishlistToggle() {
+    toggleWishlist(product.id);
+
+    if (productIsInWishlist) {
+      toast.info(
+        `${product.name} removed from your wishlist.`,
+      );
+
+      return;
+    }
+
+    toast.success(
+      `${product.name} saved to your wishlist.`,
+      {
+        action: {
+          label: "View Wishlist",
+          onClick: () => {
+            window.location.href = "/wishlist";
+          },
+        },
+      },
+    );
+  }
 
   return (
     <article className="group overflow-hidden rounded-2xl border bg-card text-card-foreground shadow-sm transition-all duration-300 hover:-translate-y-1 hover:shadow-xl">
@@ -79,8 +97,8 @@ export default function ProductCard({
           aria-pressed={
             productIsInWishlist
           }
-          onClick={() =>
-            toggleWishlist(product.id)
+          onClick={
+            handleWishlistToggle
           }
           className={`absolute top-4 right-4 z-10 rounded-full shadow-sm backdrop-blur ${
             productIsInWishlist
@@ -119,9 +137,7 @@ export default function ProductCard({
         <div className="mt-4">
           <ProductRating
             rating={product.rating}
-            reviewCount={
-              product.reviewCount
-            }
+            reviewCount={product.reviewCount}
           />
         </div>
 

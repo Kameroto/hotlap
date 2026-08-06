@@ -9,6 +9,8 @@ import {
   Trash2,
 } from "lucide-react";
 
+import PromoCodeForm from "@/components/cart/PromoCodeForm";
+
 import Container from "@/components/layout/Container";
 import Section from "@/components/layout/Section";
 
@@ -25,13 +27,24 @@ import {
   formatCurrency,
 } from "@/lib/format-currency";
 
+import {
+  validatePromotion,
+} from "@/lib/promotions";
+
 import { cn } from "@/lib/utils";
+
 import { useCartStore } from "@/store/cart-store";
 
 export default function CartPage() {
   const items = useCartStore(
     (state) => state.items,
   );
+
+  const appliedPromotionCode =
+    useCartStore(
+      (state) =>
+        state.appliedPromotionCode,
+    );
 
   const hasHydrated = useCartStore(
     (state) => state.hasHydrated,
@@ -57,40 +70,70 @@ export default function CartPage() {
     (state) => state.clearCart,
   );
 
-  const cartProducts = items.flatMap(
-    (cartItem) => {
-      const product = products.find(
-        (candidateProduct) =>
-          candidateProduct.id ===
-          cartItem.productId,
-      );
+  const cartProducts =
+    items.flatMap(
+      (cartItem) => {
+        const product =
+          products.find(
+            (candidateProduct) =>
+              candidateProduct.id ===
+              cartItem.productId,
+          );
 
-      if (!product) {
-        return [];
-      }
+        if (!product) {
+          return [];
+        }
 
-      return [
-        {
-          product,
-          quantity: cartItem.quantity,
-        },
-      ];
-    },
-  );
+        return [
+          {
+            product,
+            quantity:
+              cartItem.quantity,
+          },
+        ];
+      },
+    );
 
   const totalQuantity =
     cartProducts.reduce(
-      (total, cartProduct) =>
-        total + cartProduct.quantity,
+      (
+        total,
+        cartProduct,
+      ) =>
+        total +
+        cartProduct.quantity,
       0,
     );
 
   const subtotal =
     cartProducts.reduce(
-      (total, cartProduct) =>
+      (
+        total,
+        cartProduct,
+      ) =>
         total +
-        cartProduct.product.price *
+        cartProduct.product
+          .price *
           cartProduct.quantity,
+      0,
+    );
+
+  const promotionResult =
+    appliedPromotionCode
+      ? validatePromotion(
+          appliedPromotionCode,
+          subtotal,
+        )
+      : null;
+
+  const discountAmount =
+    promotionResult?.isValid
+      ? promotionResult.discountAmount
+      : 0;
+
+  const total =
+    Math.max(
+      subtotal - discountAmount,
       0,
     );
 
@@ -133,7 +176,8 @@ export default function CartPage() {
               </p>
             </div>
 
-            {cartProducts.length > 0 && (
+            {cartProducts.length >
+              0 && (
               <Button
                 type="button"
                 variant="outline"
@@ -145,7 +189,8 @@ export default function CartPage() {
             )}
           </div>
 
-          {cartProducts.length > 0 ? (
+          {cartProducts.length >
+          0 ? (
             <div className="mt-12 grid gap-10 lg:grid-cols-[1fr_360px]">
               <div className="space-y-6">
                 {cartProducts.map(
@@ -274,7 +319,15 @@ export default function CartPage() {
                   Order Summary
                 </h2>
 
-                <div className="mt-6 space-y-4">
+                <div className="mt-6">
+                  <PromoCodeForm
+                    subtotal={
+                      subtotal
+                    }
+                  />
+                </div>
+
+                <div className="mt-6 space-y-4 border-t pt-6">
                   <div className="flex items-center justify-between text-muted-foreground">
                     <span>
                       Subtotal
@@ -287,6 +340,23 @@ export default function CartPage() {
                       )}
                     </span>
                   </div>
+
+                  {discountAmount >
+                    0 && (
+                    <div className="flex items-center justify-between text-green-700">
+                      <span>
+                        Coupon discount
+                      </span>
+
+                      <span>
+                        -
+                        {formatCurrency(
+                          discountAmount,
+                          "INR",
+                        )}
+                      </span>
+                    </div>
+                  )}
 
                   <div className="flex items-center justify-between text-muted-foreground">
                     <span>
@@ -306,7 +376,7 @@ export default function CartPage() {
 
                       <span>
                         {formatCurrency(
-                          subtotal,
+                          total,
                           "INR",
                         )}
                       </span>
@@ -315,16 +385,16 @@ export default function CartPage() {
                 </div>
 
                 <Link
-  href="/checkout"
-  className={cn(
-    buttonVariants({
-      size: "lg",
-    }),
-    "mt-6 w-full",
-  )}
->
-  Proceed to Checkout
-</Link>
+                  href="/checkout"
+                  className={cn(
+                    buttonVariants({
+                      size: "lg",
+                    }),
+                    "mt-6 w-full",
+                  )}
+                >
+                  Proceed to Checkout
+                </Link>
 
                 <Link
                   href="/products"

@@ -4,6 +4,7 @@ import {
   Check,
   ShoppingCart,
 } from "lucide-react";
+import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
 import { useCartStore } from "@/store/cart-store";
@@ -39,7 +40,8 @@ export default function AddToCartButton({
     (item) => item.productId === productId,
   );
 
-  const isOutOfStock = stockQuantity <= 0;
+  const isOutOfStock =
+    stockQuantity <= 0;
 
   const hasReachedStockLimit =
     cartItem !== undefined &&
@@ -49,7 +51,38 @@ export default function AddToCartButton({
     hasHydrated && cartItem !== undefined;
 
   function handleAddToCart() {
-    addItem(productId, stockQuantity);
+    if (isOutOfStock) {
+      toast.error(
+        `${productName} is currently unavailable.`,
+      );
+
+      return;
+    }
+
+    if (hasReachedStockLimit) {
+      toast.warning(
+        `Only ${stockQuantity} units of ${productName} are available.`,
+      );
+
+      return;
+    }
+
+    addItem(
+      productId,
+      stockQuantity,
+    );
+
+    toast.success(
+      `${productName} added to your cart.`,
+      {
+        action: {
+          label: "View Cart",
+          onClick: () => {
+            window.location.href = "/cart";
+          },
+        },
+      },
+    );
   }
 
   return (
