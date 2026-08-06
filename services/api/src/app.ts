@@ -1,29 +1,52 @@
+import cookie from "@fastify/cookie";
 import cors from "@fastify/cors";
+import jwt from "@fastify/jwt";
 import Fastify from "fastify";
 
 import { env } from "./config/env.js";
+import { authRoutes } from "./routes/auth.js";
 import { databaseRoutes } from "./routes/database.js";
 import { healthRoutes } from "./routes/health.js";
+import { ApiError } from "./utils/api-error.js";
 
 type ErrorResponse = {
   statusCode: number;
   error: string;
+  code: string;
   message: string;
+  details?: unknown;
 };
 
 type NormalizedError = {
   statusCode: number;
-  name: string;
+  error: string;
+  code: string;
   message: string;
+  details?: unknown;
 };
 
 function normalizeError(
   error: unknown,
 ): NormalizedError {
+  if (error instanceof ApiError) {
+    return {
+      statusCode: error.statusCode,
+      error: error.name,
+      code: error.code,
+      message: error.message,
+      ...(error.details !== undefined
+        ? {
+            details: error.details,
+          }
+        : {}),
+    };
+  }
+
   if (!(error instanceof Error)) {
     return {
       statusCode: 500,
-      name: "Internal Server Error",
+      error: "Internal Server Error",
+      code: "INTERNAL_SERVER_ERROR",
       message:
         "An unexpected error occurred.",
     };
@@ -33,7 +56,8 @@ function normalizeError(
 
   if (
     "statusCode" in error &&
-    typeof error.statusCode === "number" &&
+    typeof error.statusCode ===
+      "number" &&
     error.statusCode >= 400 &&
     error.statusCode <= 599
   ) {
@@ -42,7 +66,14 @@ function normalizeError(
 
   return {
     statusCode,
-    name: error.name || "Error",
+    error:
+      statusCode >= 500
+        ? "Internal Server Error"
+        : error.name,
+    code:
+      statusCode >= 500
+        ? "INTERNAL_SERVER_ERROR"
+        : "REQUEST_ERROR",
     message:
       error.message ||
       "An unexpected error occurred.",
@@ -88,15 +119,29 @@ export async function buildApp() {
       "DELETE",
       "OPTIONS",
     ],
+
+    allowedHeaders: [
+      "Content-Type",
+      "Authorization",
+    ],
+  });
+
+  await app.register(cookie);
+
+  await app.register(jwt, {
+    secret:
+      env.ACCESS_TOKEN_SECRET,
   });
 
   app.get("/", async () => ({
     service: "HotLap API",
-    version: "0.2.0",
+    version: "0.3.0",
     healthEndpoint:
       "/api/v1/health",
     databaseEndpoint:
       "/api/v1/database",
+    authenticationEndpoint:
+      "/api/v1/auth",
   }));
 
   await app.register(healthRoutes, {
@@ -107,11 +152,16 @@ export async function buildApp() {
     prefix: "/api/v1",
   });
 
+  await app.register(authRoutes, {
+    prefix: "/api/v1/auth",
+  });
+
   app.setNotFoundHandler(
     async (request, reply) => {
       const response: ErrorResponse = {
         statusCode: 404,
         error: "Not Found",
+        code: "ROUTE_NOT_FOUND",
         message: `Route ${request.method} ${request.url} was not found.`,
       };
 
@@ -130,24 +180,37 @@ export async function buildApp() {
       const normalizedError =
         normalizeError(error);
 
-      request.log.error(
-        {
-          error,
-          statusCode:
-            normalizedError.statusCode,
-        },
-        "Request failed",
-      );
+      if (
+        normalizedError.statusCode >=
+        500
+      ) {
+        request.log.error(
+          {
+            error,
+            statusCode:
+              normalizedError.statusCode,
+          },
+          "Request failed",
+        );
+      } else {
+        request.log.warn(
+          {
+            statusCode:
+              normalizedError.statusCode,
+            code:
+              normalizedError.code,
+          },
+          "Request rejected",
+        );
+      }
 
       const response: ErrorResponse = {
         statusCode:
           normalizedError.statusCode,
-
         error:
-          normalizedError.statusCode >=
-          500
-            ? "Internal Server Error"
-            : normalizedError.name,
+          normalizedError.error,
+        code:
+          normalizedError.code,
 
         message:
           normalizedError.statusCode >=
@@ -155,6 +218,14 @@ export async function buildApp() {
           env.NODE_ENV === "production"
             ? "An unexpected error occurred."
             : normalizedError.message,
+
+        ...(normalizedError.details !==
+        undefined
+          ? {
+              details:
+                normalizedError.details,
+            }
+          : {}),
       };
 
       return reply

@@ -18,7 +18,9 @@
     "db:reset": "prisma migrate reset"
   },
   "dependencies": {
+    "@fastify/cookie": "^11.1.2",
     "@fastify/cors": "^11.1.0",
+    "@fastify/jwt": "^10.2.1",
     "@prisma/adapter-pg": "^7.0.0",
     "@prisma/client": "^7.0.0",
     "dotenv": "^17.0.0",

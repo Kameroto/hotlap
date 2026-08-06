@@ -54,6 +54,32 @@ const environmentSchema = z.object({
         value.startsWith("postgres://"),
       "DATABASE_URL must be a PostgreSQL connection string.",
     ),
+
+  ACCESS_TOKEN_SECRET: z
+    .string()
+    .min(
+      32,
+      "ACCESS_TOKEN_SECRET must contain at least 32 characters.",
+    ),
+
+  ACCESS_TOKEN_EXPIRES_IN: z
+    .string()
+    .trim()
+    .min(1)
+    .default("15m"),
+
+  REFRESH_TOKEN_EXPIRES_DAYS: z.coerce
+    .number()
+    .int()
+    .positive()
+    .max(365)
+    .default(30),
+
+  REFRESH_COOKIE_NAME: z
+    .string()
+    .trim()
+    .min(1)
+    .default("hotlap_refresh_token"),
 });
 
 const parsedEnvironment =
