@@ -1,63 +1,41 @@
-# ==========================
 # Dependencies
-# ==========================
 node_modules
-**/node_modules
 
-# ==========================
-# Next.js
-# ==========================
-.next
-**/.next
-out
-**/out
-
-# ==========================
-# Build Output
-# ==========================
-dist
-coverage
-build
-
-# ==========================
-# Turbo
-# ==========================
-.turbo
-
-# ==========================
 # Logs
-# ==========================
 *.log
 npm-debug.log*
+pnpm-debug.log*
 yarn-debug.log*
 yarn-error.log*
-pnpm-debug.log*
 
-# ==========================
-# Environment Variables
-# ==========================
+# Build output
+dist
+.next
+out
+coverage
+
+# Environment files
 .env
-.env.*
+.env.local
+.env.development
+.env.production
+.env.test
+.env.*.local
+
+# Commit safe environment templates
 !.env.example
+!**/.env.example
 
-# ==========================
-# TypeScript
-# ==========================
-*.tsbuildinfo
-
-# ==========================
 # IDE
-# ==========================
 .vscode/settings.json
 .idea
 
-# ==========================
-# Operating System
-# ==========================
+# OS
 .DS_Store
 Thumbs.db
 
-# ==========================
-# Vercel
-# ==========================
-.vercel
+# Turbo
+.turbo
+
+# TypeScript
+*.tsbuildinfo
