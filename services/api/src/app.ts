@@ -5,8 +5,12 @@ import Fastify from "fastify";
 
 import { env } from "./config/env.js";
 import { authRoutes } from "./routes/auth.js";
+import { cartRoutes } from "./routes/cart.js";
+import { categoryRoutes } from "./routes/categories.js";
 import { databaseRoutes } from "./routes/database.js";
 import { healthRoutes } from "./routes/health.js";
+import { productRoutes } from "./routes/products.js";
+import { wishlistRoutes } from "./routes/wishlist.js";
 import { ApiError } from "./utils/api-error.js";
 
 type ErrorResponse = {
@@ -34,9 +38,11 @@ function normalizeError(
       error: error.name,
       code: error.code,
       message: error.message,
+
       ...(error.details !== undefined
         ? {
-            details: error.details,
+            details:
+              error.details,
           }
         : {}),
     };
@@ -45,8 +51,10 @@ function normalizeError(
   if (!(error instanceof Error)) {
     return {
       statusCode: 500,
-      error: "Internal Server Error",
-      code: "INTERNAL_SERVER_ERROR",
+      error:
+        "Internal Server Error",
+      code:
+        "INTERNAL_SERVER_ERROR",
       message:
         "An unexpected error occurred.",
     };
@@ -61,19 +69,23 @@ function normalizeError(
     error.statusCode >= 400 &&
     error.statusCode <= 599
   ) {
-    statusCode = error.statusCode;
+    statusCode =
+      error.statusCode;
   }
 
   return {
     statusCode,
+
     error:
       statusCode >= 500
         ? "Internal Server Error"
         : error.name,
+
     code:
       statusCode >= 500
         ? "INTERNAL_SERVER_ERROR"
         : "REQUEST_ERROR",
+
     message:
       error.message ||
       "An unexpected error occurred.",
@@ -93,7 +105,8 @@ export async function buildApp() {
               colorize: true,
               translateTime:
                 "SYS:standard",
-              ignore: "pid,hostname",
+              ignore:
+                "pid,hostname",
             },
           },
         }
@@ -123,6 +136,11 @@ export async function buildApp() {
     allowedHeaders: [
       "Content-Type",
       "Authorization",
+      "X-Cart-Token",
+    ],
+
+    exposedHeaders: [
+      "X-Cart-Token",
     ],
   });
 
@@ -135,13 +153,33 @@ export async function buildApp() {
 
   app.get("/", async () => ({
     service: "HotLap API",
-    version: "0.3.0",
-    healthEndpoint:
-      "/api/v1/health",
-    databaseEndpoint:
-      "/api/v1/database",
-    authenticationEndpoint:
-      "/api/v1/auth",
+    version: "0.5.0",
+
+    endpoints: {
+      health:
+        "/api/v1/health",
+
+      database:
+        "/api/v1/database",
+
+      authentication:
+        "/api/v1/auth",
+
+      categories:
+        "/api/v1/categories",
+
+      products:
+        "/api/v1/products",
+
+      featuredProducts:
+        "/api/v1/products/featured",
+
+      cart:
+        "/api/v1/cart",
+
+      wishlist:
+        "/api/v1/wishlist",
+    },
   }));
 
   await app.register(healthRoutes, {
@@ -154,6 +192,22 @@ export async function buildApp() {
 
   await app.register(authRoutes, {
     prefix: "/api/v1/auth",
+  });
+
+  await app.register(categoryRoutes, {
+    prefix: "/api/v1",
+  });
+
+  await app.register(productRoutes, {
+    prefix: "/api/v1",
+  });
+
+  await app.register(cartRoutes, {
+    prefix: "/api/v1",
+  });
+
+  await app.register(wishlistRoutes, {
+    prefix: "/api/v1",
   });
 
   app.setNotFoundHandler(
@@ -187,6 +241,7 @@ export async function buildApp() {
         request.log.error(
           {
             error,
+
             statusCode:
               normalizedError.statusCode,
           },
@@ -197,6 +252,7 @@ export async function buildApp() {
           {
             statusCode:
               normalizedError.statusCode,
+
             code:
               normalizedError.code,
           },
@@ -207,8 +263,10 @@ export async function buildApp() {
       const response: ErrorResponse = {
         statusCode:
           normalizedError.statusCode,
+
         error:
           normalizedError.error,
+
         code:
           normalizedError.code,
 
