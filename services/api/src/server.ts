@@ -1,5 +1,6 @@
 import { buildApp } from "./app.js";
 import { env } from "./config/env.js";
+import { prisma } from "./lib/prisma.js";
 
 const app = await buildApp();
 
@@ -15,6 +16,7 @@ async function stopServer(
 
   try {
     await app.close();
+    await prisma.$disconnect();
 
     app.log.info(
       "HotLap API stopped successfully",
@@ -33,19 +35,13 @@ async function stopServer(
   }
 }
 
-process.once(
-  "SIGINT",
-  () => {
-    void stopServer("SIGINT");
-  },
-);
+process.once("SIGINT", () => {
+  void stopServer("SIGINT");
+});
 
-process.once(
-  "SIGTERM",
-  () => {
-    void stopServer("SIGTERM");
-  },
-);
+process.once("SIGTERM", () => {
+  void stopServer("SIGTERM");
+});
 
 try {
   await app.listen({
@@ -68,6 +64,8 @@ try {
     },
     "HotLap API failed to start",
   );
+
+  await prisma.$disconnect();
 
   process.exit(1);
 }

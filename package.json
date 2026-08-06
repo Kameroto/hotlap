@@ -10,7 +10,15 @@
     "test": "turbo run test",
     "format": "prettier --write .",
     "dev:web": "pnpm --filter web dev",
-    "dev:api": "pnpm --filter @hotlap/api dev"
+    "dev:api": "pnpm --filter @hotlap/api dev",
+    "db:up": "docker compose up -d postgres",
+    "db:down": "docker compose down",
+    "db:logs": "docker compose logs -f postgres",
+    "db:generate": "pnpm --filter @hotlap/api db:generate",
+    "db:migrate": "pnpm --filter @hotlap/api db:migrate",
+    "db:seed": "pnpm --filter @hotlap/api db:seed",
+    "db:studio": "pnpm --filter @hotlap/api db:studio",
+    "db:reset": "pnpm --filter @hotlap/api db:reset"
   },
   "devDependencies": {
     "turbo": "^2.5.6"

@@ -40,6 +40,20 @@ const environmentSchema = z.object({
       "silent",
     ])
     .default("info"),
+
+  DATABASE_URL: z
+    .string()
+    .trim()
+    .min(
+      1,
+      "DATABASE_URL is required.",
+    )
+    .refine(
+      (value) =>
+        value.startsWith("postgresql://") ||
+        value.startsWith("postgres://"),
+      "DATABASE_URL must be a PostgreSQL connection string.",
+    ),
 });
 
 const parsedEnvironment =

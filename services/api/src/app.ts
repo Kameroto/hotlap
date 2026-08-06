@@ -2,6 +2,7 @@ import cors from "@fastify/cors";
 import Fastify from "fastify";
 
 import { env } from "./config/env.js";
+import { databaseRoutes } from "./routes/database.js";
 import { healthRoutes } from "./routes/health.js";
 
 type ErrorResponse = {
@@ -16,12 +17,15 @@ type NormalizedError = {
   message: string;
 };
 
-function normalizeError(error: unknown): NormalizedError {
+function normalizeError(
+  error: unknown,
+): NormalizedError {
   if (!(error instanceof Error)) {
     return {
       statusCode: 500,
       name: "Internal Server Error",
-      message: "An unexpected error occurred.",
+      message:
+        "An unexpected error occurred.",
     };
   }
 
@@ -39,7 +43,9 @@ function normalizeError(error: unknown): NormalizedError {
   return {
     statusCode,
     name: error.name || "Error",
-    message: error.message || "An unexpected error occurred.",
+    message:
+      error.message ||
+      "An unexpected error occurred.",
   };
 }
 
@@ -48,11 +54,14 @@ export async function buildApp() {
     env.NODE_ENV === "development"
       ? {
           level: env.LOG_LEVEL,
+
           transport: {
             target: "pino-pretty",
+
             options: {
               colorize: true,
-              translateTime: "SYS:standard",
+              translateTime:
+                "SYS:standard",
               ignore: "pid,hostname",
             },
           },
@@ -69,6 +78,7 @@ export async function buildApp() {
   await app.register(cors, {
     origin: env.WEB_ORIGIN,
     credentials: true,
+
     methods: [
       "GET",
       "HEAD",
@@ -82,54 +92,78 @@ export async function buildApp() {
 
   app.get("/", async () => ({
     service: "HotLap API",
-    version: "0.1.0",
-    healthEndpoint: "/api/v1/health",
+    version: "0.2.0",
+    healthEndpoint:
+      "/api/v1/health",
+    databaseEndpoint:
+      "/api/v1/database",
   }));
 
   await app.register(healthRoutes, {
     prefix: "/api/v1",
   });
 
-  app.setNotFoundHandler(async (request, reply) => {
-    const response: ErrorResponse = {
-      statusCode: 404,
-      error: "Not Found",
-      message: `Route ${request.method} ${request.url} was not found.`,
-    };
-
-    return reply.code(404).send(response);
+  await app.register(databaseRoutes, {
+    prefix: "/api/v1",
   });
 
-  app.setErrorHandler(async (error, request, reply) => {
-    const normalizedError = normalizeError(error);
+  app.setNotFoundHandler(
+    async (request, reply) => {
+      const response: ErrorResponse = {
+        statusCode: 404,
+        error: "Not Found",
+        message: `Route ${request.method} ${request.url} was not found.`,
+      };
 
-    request.log.error(
-      {
-        error,
-        statusCode: normalizedError.statusCode,
-      },
-      "Request failed",
-    );
+      return reply
+        .code(404)
+        .send(response);
+    },
+  );
 
-    const response: ErrorResponse = {
-      statusCode: normalizedError.statusCode,
+  app.setErrorHandler(
+    async (
+      error,
+      request,
+      reply,
+    ) => {
+      const normalizedError =
+        normalizeError(error);
 
-      error:
-        normalizedError.statusCode >= 500
-          ? "Internal Server Error"
-          : normalizedError.name,
+      request.log.error(
+        {
+          error,
+          statusCode:
+            normalizedError.statusCode,
+        },
+        "Request failed",
+      );
 
-      message:
-        normalizedError.statusCode >= 500 &&
-        env.NODE_ENV === "production"
-          ? "An unexpected error occurred."
-          : normalizedError.message,
-    };
+      const response: ErrorResponse = {
+        statusCode:
+          normalizedError.statusCode,
 
-    return reply
-      .code(normalizedError.statusCode)
-      .send(response);
-  });
+        error:
+          normalizedError.statusCode >=
+          500
+            ? "Internal Server Error"
+            : normalizedError.name,
+
+        message:
+          normalizedError.statusCode >=
+            500 &&
+          env.NODE_ENV === "production"
+            ? "An unexpected error occurred."
+            : normalizedError.message,
+      };
+
+      return reply
+        .code(
+          normalizedError.statusCode,
+        )
+        .send(response);
+    },
+  );
 
   return app;
 }
