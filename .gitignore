@@ -42,3 +42,6 @@ Thumbs.db
 
 # TypeScript
 *.tsbuildinfo
+# Keep environment templates in Git
+!.env.example
+!**/.env.example

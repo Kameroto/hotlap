@@ -13,7 +13,10 @@ import {
   UserRound,
 } from "lucide-react";
 
+import { toast } from "sonner";
+
 import { cn } from "@/lib/utils";
+import { useAuthStore } from "@/store/auth-store";
 
 const accountLinks = [
   {
@@ -51,6 +54,36 @@ const accountLinks = [
 export default function AccountNavigation() {
   const pathname = usePathname();
 
+  const user = useAuthStore(
+    (state) => state.user,
+  );
+
+  const logout = useAuthStore(
+    (state) => state.logout,
+  );
+
+  const status = useAuthStore(
+    (state) => state.status,
+  );
+
+  async function handleLogout(): Promise<void> {
+    try {
+      await logout();
+
+      toast.success(
+        "You have been signed out.",
+      );
+
+      window.location.replace("/login");
+    } catch {
+      toast.error(
+        "Your local session was cleared, but the server could not be reached.",
+      );
+
+      window.location.replace("/login");
+    }
+  }
+
   return (
     <aside className="h-fit rounded-2xl border bg-card p-4 lg:sticky lg:top-24">
       <div className="border-b px-3 pb-5">
@@ -59,11 +92,13 @@ export default function AccountNavigation() {
         </p>
 
         <p className="mt-2 font-semibold">
-          Tanmay Saini
+          {user
+            ? `${user.firstName} ${user.lastName}`
+            : "HotLap Customer"}
         </p>
 
-        <p className="mt-1 text-sm text-muted-foreground">
-          sainitanmay@gmail.com
+        <p className="mt-1 break-all text-sm text-muted-foreground">
+          {user?.email ?? "Customer account"}
         </p>
       </div>
 
@@ -77,7 +112,9 @@ export default function AccountNavigation() {
           const isActive =
             link.href === "/account"
               ? pathname === "/account"
-              : pathname.startsWith(link.href);
+              : pathname.startsWith(
+                  link.href,
+                );
 
           return (
             <Link
@@ -98,13 +135,20 @@ export default function AccountNavigation() {
       </nav>
 
       <div className="mt-4 border-t pt-4">
-        <Link
-          href="/login"
-          className="flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium text-red-600 transition hover:bg-red-50"
+        <button
+          type="button"
+          onClick={() => {
+            void handleLogout();
+          }}
+          disabled={status === "loading"}
+          className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium text-red-600 transition hover:bg-red-50 disabled:pointer-events-none disabled:opacity-50"
         >
           <LogOut className="h-4 w-4" />
-          Sign Out
-        </Link>
+
+          {status === "loading"
+            ? "Signing Out..."
+            : "Sign Out"}
+        </button>
       </div>
     </aside>
   );

@@ -5,6 +5,7 @@ import {
   type ReactNode,
 } from "react";
 
+import { useAuthStore } from "@/store/auth-store";
 import { useCartStore } from "@/store/cart-store";
 
 import {
@@ -64,7 +65,9 @@ export default function StoreHydration({
         if (legacyWishlist.length > 0) {
           useWishlistStore
             .getState()
-            .replaceWishlist(legacyWishlist);
+            .replaceWishlist(
+              legacyWishlist,
+            );
         }
       }
 
@@ -90,6 +93,17 @@ export default function StoreHydration({
         useCartStore
           .getState()
           .setHasHydrated(true);
+      }
+
+      try {
+        await useAuthStore
+          .getState()
+          .initialize();
+      } catch (error) {
+        console.error(
+          "Authentication hydration failed:",
+          error,
+        );
       }
     }
 

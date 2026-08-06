@@ -2,7 +2,10 @@ import { z } from "zod";
 
 const passwordSchema = z
   .string()
-  .min(8, "Password must contain at least 8 characters.")
+  .min(
+    8,
+    "Password must contain at least 8 characters.",
+  )
   .regex(
     /[A-Z]/,
     "Password must contain at least one uppercase letter.",
@@ -19,7 +22,9 @@ const passwordSchema = z
 export const loginSchema = z.object({
   email: z
     .email("Enter a valid email address.")
-    .transform((value) => value.trim().toLowerCase()),
+    .transform((value) =>
+      value.trim().toLowerCase(),
+    ),
 
   password: z
     .string()
@@ -77,7 +82,8 @@ export const registerSchema = z
   })
   .refine(
     (values) =>
-      values.password === values.confirmPassword,
+      values.password ===
+      values.confirmPassword,
     {
       message: "Passwords do not match.",
       path: ["confirmPassword"],
@@ -88,14 +94,16 @@ export type RegisterFormValues = z.infer<
   typeof registerSchema
 >;
 
-export const forgotPasswordSchema = z.object({
-  email: z
-    .email("Enter a valid email address.")
-    .transform((value) =>
-      value.trim().toLowerCase(),
-    ),
-});
+export const forgotPasswordSchema =
+  z.object({
+    email: z
+      .email("Enter a valid email address.")
+      .transform((value) =>
+        value.trim().toLowerCase(),
+      ),
+  });
 
-export type ForgotPasswordFormValues = z.infer<
-  typeof forgotPasswordSchema
->;
+export type ForgotPasswordFormValues =
+  z.infer<
+    typeof forgotPasswordSchema
+  >;

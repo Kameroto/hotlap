@@ -1,10 +1,11 @@
 "use client";
 
 import { useState } from "react";
+
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 
 import {
-  CheckCircle2,
   Eye,
   EyeOff,
   UserPlus,
@@ -16,6 +17,7 @@ import {
 } from "react-hook-form";
 
 import { zodResolver } from "@hookform/resolvers/zod";
+import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
 
@@ -23,6 +25,9 @@ import {
   registerSchema,
   type RegisterFormValues,
 } from "@/lib/auth-schema";
+
+import { ApiClientError } from "@/lib/api/client";
+import { useAuthStore } from "@/store/auth-store";
 
 type FieldErrorMessageProps = {
   error?: FieldError;
@@ -46,6 +51,12 @@ const inputClassName =
   "mt-2 h-11 w-full rounded-lg border bg-background px-3 text-sm outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/20";
 
 export default function RegisterForm() {
+  const router = useRouter();
+
+  const registerCustomer = useAuthStore(
+    (state) => state.register,
+  );
+
   const [showPassword, setShowPassword] =
     useState(false);
 
@@ -55,9 +66,9 @@ export default function RegisterForm() {
   ] = useState(false);
 
   const [
-    registrationComplete,
-    setRegistrationComplete,
-  ] = useState(false);
+    submissionError,
+    setSubmissionError,
+  ] = useState<string | null>(null);
 
   const {
     register,
@@ -82,46 +93,32 @@ export default function RegisterForm() {
 
   async function submitRegistration(
     values: RegisterFormValues,
-  ) {
-    await new Promise((resolve) => {
-      window.setTimeout(resolve, 700);
-    });
+  ): Promise<void> {
+    setSubmissionError(null);
 
-    console.info(
-      "Temporary frontend registration",
-      {
-        ...values,
-        password: "[REDACTED]",
-        confirmPassword: "[REDACTED]",
-      },
-    );
+    try {
+      await registerCustomer({
+        firstName: values.firstName,
+        lastName: values.lastName,
+        email: values.email,
+        phone: values.phone,
+        password: values.password,
+      });
 
-    setRegistrationComplete(true);
-  }
+      toast.success(
+        "Your HotLap account has been created.",
+      );
 
-  if (registrationComplete) {
-    return (
-      <div className="rounded-2xl border border-green-200 bg-green-50 p-6 text-green-900">
-        <CheckCircle2 className="h-8 w-8" />
+      router.replace("/account");
+      router.refresh();
+    } catch (error) {
+      const message =
+        error instanceof ApiClientError
+          ? error.message
+          : "Unable to create your account. Please try again.";
 
-        <h2 className="mt-4 text-xl font-semibold">
-          Registration form verified
-        </h2>
-
-        <p className="mt-2 text-sm leading-6">
-          Your frontend account form works. The backend
-          will later create the user securely and hash the
-          password.
-        </p>
-
-        <Link
-          href="/login"
-          className="mt-5 inline-flex h-9 items-center justify-center rounded-lg bg-primary px-4 text-sm font-medium text-primary-foreground transition hover:bg-primary/80"
-        >
-          Continue to Login
-        </Link>
-      </div>
-    );
+      setSubmissionError(message);
+    }
   }
 
   return (
@@ -132,6 +129,15 @@ export default function RegisterForm() {
       noValidate
       className="space-y-5"
     >
+      {submissionError && (
+        <div
+          role="alert"
+          className="rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-800"
+        >
+          {submissionError}
+        </div>
+      )}
+
       <div className="grid gap-5 sm:grid-cols-2">
         <div>
           <label
@@ -319,7 +325,9 @@ export default function RegisterForm() {
         </div>
 
         <FieldErrorMessage
-          error={errors.confirmPassword}
+          error={
+            errors.confirmPassword
+          }
         />
       </div>
 

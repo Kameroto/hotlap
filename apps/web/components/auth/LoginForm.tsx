@@ -1,10 +1,15 @@
 "use client";
 
 import { useState } from "react";
+
 import Link from "next/link";
 
 import {
-  CheckCircle2,
+  useRouter,
+  useSearchParams,
+} from "next/navigation";
+
+import {
   Eye,
   EyeOff,
   LogIn,
@@ -16,6 +21,7 @@ import {
 } from "react-hook-form";
 
 import { zodResolver } from "@hookform/resolvers/zod";
+import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
 
@@ -23,6 +29,9 @@ import {
   loginSchema,
   type LoginFormValues,
 } from "@/lib/auth-schema";
+
+import { ApiClientError } from "@/lib/api/client";
+import { useAuthStore } from "@/store/auth-store";
 
 type FieldErrorMessageProps = {
   error?: FieldError;
@@ -46,11 +55,20 @@ const inputClassName =
   "mt-2 h-11 w-full rounded-lg border bg-background px-3 text-sm outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/20";
 
 export default function LoginForm() {
+  const router = useRouter();
+  const searchParams = useSearchParams();
+
+  const login = useAuthStore(
+    (state) => state.login,
+  );
+
   const [showPassword, setShowPassword] =
     useState(false);
 
-  const [loginComplete, setLoginComplete] =
-    useState(false);
+  const [
+    submissionError,
+    setSubmissionError,
+  ] = useState<string | null>(null);
 
   const {
     register,
@@ -71,46 +89,39 @@ export default function LoginForm() {
 
   async function submitLogin(
     values: LoginFormValues,
-  ) {
-    await new Promise((resolve) => {
-      window.setTimeout(resolve, 600);
-    });
+  ): Promise<void> {
+    setSubmissionError(null);
 
-    console.info(
-      "Temporary frontend login",
-      values,
-    );
+    try {
+      await login({
+        email: values.email,
+        password: values.password,
+      });
 
-    setLoginComplete(true);
-  }
+      toast.success(
+        "Welcome back to HotLap.",
+      );
 
-  if (loginComplete) {
-    return (
-      <div className="rounded-2xl border border-green-200 bg-green-50 p-6 text-green-900">
-        <CheckCircle2 className="h-8 w-8" />
+      const requestedDestination =
+        searchParams.get("next");
 
-        <h2 className="mt-4 text-xl font-semibold">
-          Login form verified
-        </h2>
+      const destination =
+        requestedDestination?.startsWith(
+          "/",
+        )
+          ? requestedDestination
+          : "/account";
 
-        <p className="mt-2 text-sm leading-6">
-          The frontend form works correctly. Real
-          authentication will be connected to the HotLap
-          API during the backend sprint.
-        </p>
+      router.replace(destination);
+      router.refresh();
+    } catch (error) {
+      const message =
+        error instanceof ApiClientError
+          ? error.message
+          : "Unable to sign in. Please try again.";
 
-        <Button
-          type="button"
-          variant="outline"
-          className="mt-5"
-          onClick={() =>
-            setLoginComplete(false)
-          }
-        >
-          Return to Login
-        </Button>
-      </div>
-    );
+      setSubmissionError(message);
+    }
   }
 
   return (
@@ -119,6 +130,15 @@ export default function LoginForm() {
       noValidate
       className="space-y-5"
     >
+      {submissionError && (
+        <div
+          role="alert"
+          className="rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-800"
+        >
+          {submissionError}
+        </div>
+      )}
+
       <div>
         <label
           htmlFor="login-email"
