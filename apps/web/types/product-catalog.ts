@@ -10,6 +10,23 @@ export type ProductSortOption =
   | "highest-rated"
   | "alphabetical";
 
+export type ProductCatalogueQuery = {
+  search?: string;
+  category?: string;
+  sort?: ProductSortOption;
+  page?: number;
+};
+
+export const DEFAULT_PRODUCT_SORT:
+  ProductSortOption =
+  "featured";
+
+export const DEFAULT_PRODUCT_PAGE =
+  1;
+
+export const PRODUCT_PAGE_SIZE =
+  12;
+
 export const sortOptions: {
   value: ProductSortOption;
   label: string;
@@ -39,6 +56,15 @@ export const sortOptions: {
     label: "Alphabetical",
   },
 ];
+
+export function isProductSortOption(
+  value: string,
+): value is ProductSortOption {
+  return sortOptions.some(
+    (option) =>
+      option.value === value,
+  );
+}
 
 export function mapProductSortToApi(
   sortOption: ProductSortOption,

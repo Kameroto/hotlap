@@ -1,3 +1,11 @@
+"use client";
+
+import {
+  usePathname,
+  useRouter,
+  useSearchParams,
+} from "next/navigation";
+
 import type {
   ProductCategoryFilter as ProductCategoryFilterValue,
 } from "@/types/product-catalog";
@@ -12,18 +20,57 @@ type ProductCategoryFilterProps = {
 
   selectedCategory:
     ProductCategoryFilterValue;
-
-  onCategoryChange: (
-    category:
-      ProductCategoryFilterValue,
-  ) => void;
 };
 
 export default function ProductCategoryFilter({
   categories,
   selectedCategory,
-  onCategoryChange,
 }: ProductCategoryFilterProps) {
+  const router =
+    useRouter();
+
+  const pathname =
+    usePathname();
+
+  const searchParams =
+    useSearchParams();
+
+  function updateCategory(
+    category:
+      ProductCategoryFilterValue,
+  ) {
+    const nextSearchParams =
+      new URLSearchParams(
+        searchParams.toString(),
+      );
+
+    if (
+      category === "all"
+    ) {
+      nextSearchParams.delete(
+        "category",
+      );
+    } else {
+      nextSearchParams.set(
+        "category",
+        category,
+      );
+    }
+
+    nextSearchParams.delete(
+      "page",
+    );
+
+    const queryString =
+      nextSearchParams.toString();
+
+    router.push(
+      queryString
+        ? `${pathname}?${queryString}`
+        : pathname,
+    );
+  }
+
   return (
     <div
       className="mt-6 flex flex-wrap gap-3"
@@ -32,13 +79,17 @@ export default function ProductCategoryFilter({
       <button
         type="button"
         onClick={() =>
-          onCategoryChange("all")
+          updateCategory(
+            "all",
+          )
         }
         aria-pressed={
-          selectedCategory === "all"
+          selectedCategory ===
+          "all"
         }
         className={`rounded-full border px-4 py-2 text-sm font-medium transition ${
-          selectedCategory === "all"
+          selectedCategory ===
+          "all"
             ? "bg-primary text-primary-foreground"
             : "bg-background hover:bg-muted"
         }`}
@@ -54,10 +105,12 @@ export default function ProductCategoryFilter({
 
           return (
             <button
-              key={category.value}
+              key={
+                category.value
+              }
               type="button"
               onClick={() =>
-                onCategoryChange(
+                updateCategory(
                   category.value,
                 )
               }
@@ -70,7 +123,9 @@ export default function ProductCategoryFilter({
                   : "bg-background hover:bg-muted"
               }`}
             >
-              {category.label}
+              {
+                category.label
+              }
             </button>
           );
         },

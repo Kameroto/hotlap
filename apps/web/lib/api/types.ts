@@ -163,6 +163,20 @@ export type AddWishlistItemRequest = {
   productId: string;
 };
 
+export type Category = {
+  id: string;
+  name: string;
+  slug: string;
+  description: string | null;
+  sortOrder: number;
+  productCount: number;
+};
+
+export type CategoriesResponse = {
+  categories: Category[];
+  totalItems: number;
+};
+
 export type {
   ProductListResponse,
   FeaturedProductsResponse,
