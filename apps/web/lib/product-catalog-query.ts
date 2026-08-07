@@ -11,17 +11,21 @@ type SearchParamValue =
   | string[]
   | undefined;
 
-type ProductSearchParams = Record<
+export type ProductSearchParams = Record<
   string,
   SearchParamValue
 >;
 
+const MAX_SEARCH_LENGTH =
+  120;
+
+const MAX_CATEGORY_LENGTH =
+  100;
+
 function getFirstValue(
   value: SearchParamValue,
 ): string | undefined {
-  if (
-    Array.isArray(value)
-  ) {
+  if (Array.isArray(value)) {
     return value[0];
   }
 
@@ -30,6 +34,7 @@ function getFirstValue(
 
 function normalizeOptionalValue(
   value: SearchParamValue,
+  maximumLength: number,
 ): string | undefined {
   const firstValue =
     getFirstValue(value);
@@ -37,9 +42,14 @@ function normalizeOptionalValue(
   const normalizedValue =
     firstValue?.trim();
 
-  return normalizedValue
-    ? normalizedValue
-    : undefined;
+  if (!normalizedValue) {
+    return undefined;
+  }
+
+  return normalizedValue.slice(
+    0,
+    maximumLength,
+  );
 }
 
 function parsePage(
@@ -48,6 +58,7 @@ function parsePage(
   const normalizedValue =
     normalizeOptionalValue(
       value,
+      20,
     );
 
   if (!normalizedValue) {
@@ -61,7 +72,7 @@ function parsePage(
     );
 
   if (
-    !Number.isFinite(
+    !Number.isSafeInteger(
       parsedPage,
     ) ||
     parsedPage < 1
@@ -78,6 +89,7 @@ function parseSort(
   const normalizedValue =
     normalizeOptionalValue(
       value,
+      40,
     );
 
   if (
@@ -99,11 +111,13 @@ export function parseProductCatalogueQuery(
     search:
       normalizeOptionalValue(
         searchParams.search,
+        MAX_SEARCH_LENGTH,
       ),
 
     category:
       normalizeOptionalValue(
         searchParams.category,
+        MAX_CATEGORY_LENGTH,
       ),
 
     sort:

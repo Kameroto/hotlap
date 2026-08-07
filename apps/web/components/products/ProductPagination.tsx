@@ -27,6 +27,63 @@ type ProductPaginationProps = {
     ProductCatalogueQuery;
 };
 
+type PaginationItem =
+  | number
+  | "ellipsis-left"
+  | "ellipsis-right";
+
+function createPaginationItems(
+  currentPage: number,
+  totalPages: number,
+): PaginationItem[] {
+  if (totalPages <= 7) {
+    return Array.from(
+      {
+        length: totalPages,
+      },
+      (_, index) =>
+        index + 1,
+    );
+  }
+
+  if (currentPage <= 4) {
+    return [
+      1,
+      2,
+      3,
+      4,
+      5,
+      "ellipsis-right",
+      totalPages,
+    ];
+  }
+
+  if (
+    currentPage >=
+    totalPages - 3
+  ) {
+    return [
+      1,
+      "ellipsis-left",
+      totalPages - 4,
+      totalPages - 3,
+      totalPages - 2,
+      totalPages - 1,
+      totalPages,
+    ];
+  }
+
+  return [
+    1,
+    "ellipsis-left",
+    currentPage - 1,
+    currentPage,
+    currentPage + 1,
+    "ellipsis-right",
+    totalPages,
+  ];
+}
+
 export default function ProductPagination({
   pagination,
   query,
@@ -38,17 +95,10 @@ export default function ProductPagination({
     return null;
   }
 
-  const pageNumbers =
-    Array.from(
-      {
-        length:
-          pagination.totalPages,
-      },
-      (
-        _,
-        index,
-      ) =>
-        index + 1,
+  const paginationItems =
+    createPaginationItems(
+      pagination.page,
+      pagination.totalPages,
     );
 
   return (
@@ -60,38 +110,64 @@ export default function ProductPagination({
         <Link
           href={buildProductCatalogueUrl({
             ...query,
+
             page:
               pagination.page -
               1,
           })}
+          aria-label="Go to previous product page"
           className="inline-flex h-10 items-center gap-2 rounded-lg border px-3 text-sm font-medium transition hover:bg-muted"
         >
           <ChevronLeft className="h-4 w-4" />
-          Previous
+
+          <span className="hidden sm:inline">
+            Previous
+          </span>
         </Link>
       ) : (
-        <span className="inline-flex h-10 cursor-not-allowed items-center gap-2 rounded-lg border px-3 text-sm font-medium text-muted-foreground opacity-50">
+        <span
+          aria-disabled="true"
+          className="inline-flex h-10 cursor-not-allowed items-center gap-2 rounded-lg border px-3 text-sm font-medium text-muted-foreground opacity-50"
+        >
           <ChevronLeft className="h-4 w-4" />
-          Previous
+
+          <span className="hidden sm:inline">
+            Previous
+          </span>
         </span>
       )}
 
-      {pageNumbers.map(
-        (pageNumber) => {
+      {paginationItems.map(
+        (item) => {
+          if (
+            item ===
+              "ellipsis-left" ||
+            item ===
+              "ellipsis-right"
+          ) {
+            return (
+              <span
+                key={item}
+                aria-hidden="true"
+                className="inline-flex h-10 min-w-10 items-center justify-center px-2 text-sm text-muted-foreground"
+              >
+                …
+              </span>
+            );
+          }
+
           const isCurrentPage =
-            pageNumber ===
+            item ===
             pagination.page;
 
           return (
             <Link
-              key={
-                pageNumber
-              }
+              key={item}
               href={buildProductCatalogueUrl({
                 ...query,
-                page:
-                  pageNumber,
+                page: item,
               })}
+              aria-label={`Go to product page ${item}`}
               aria-current={
                 isCurrentPage
                   ? "page"
@@ -103,9 +179,7 @@ export default function ProductPagination({
                   : "hover:bg-muted"
               }`}
             >
-              {
-                pageNumber
-              }
+              {item}
             </Link>
           );
         },
@@ -115,18 +189,29 @@ export default function ProductPagination({
         <Link
           href={buildProductCatalogueUrl({
             ...query,
+
             page:
               pagination.page +
               1,
           })}
+          aria-label="Go to next product page"
           className="inline-flex h-10 items-center gap-2 rounded-lg border px-3 text-sm font-medium transition hover:bg-muted"
         >
-          Next
+          <span className="hidden sm:inline">
+            Next
+          </span>
+
           <ChevronRight className="h-4 w-4" />
         </Link>
       ) : (
-        <span className="inline-flex h-10 cursor-not-allowed items-center gap-2 rounded-lg border px-3 text-sm font-medium text-muted-foreground opacity-50">
-          Next
+        <span
+          aria-disabled="true"
+          className="inline-flex h-10 cursor-not-allowed items-center gap-2 rounded-lg border px-3 text-sm font-medium text-muted-foreground opacity-50"
+        >
+          <span className="hidden sm:inline">
+            Next
+          </span>
+
           <ChevronRight className="h-4 w-4" />
         </span>
       )}
