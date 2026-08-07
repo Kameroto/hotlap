@@ -1,26 +1,85 @@
+import {
+  Gauge,
+  ShieldCheck,
+  Sparkles,
+} from "lucide-react";
+
 import CTAButtons from "@/components/shared/CTAButtons";
+
+const highlights = [
+  {
+    icon: Gauge,
+    label:
+      "Performance First",
+  },
+
+  {
+    icon: ShieldCheck,
+    label:
+      "Genuine Products",
+  },
+
+  {
+    icon: Sparkles,
+    label:
+      "Built for Enthusiasts",
+  },
+];
 
 export default function HeroContent() {
   return (
-    <div className="max-w-2xl">
-      <span className="inline-flex rounded-full bg-red-100 px-4 py-2 text-sm font-semibold text-red-700">
-        🏁 Premium RC Store
-      </span>
+    <div className="relative z-10 max-w-3xl">
+      <div className="inline-flex items-center gap-2 rounded-full border border-primary/30 bg-primary/8 px-4 py-2 text-xs font-bold uppercase tracking-[0.17em] text-primary shadow-[0_0_30px_rgba(255,106,0,0.07)]">
+        <span className="size-1.5 rounded-full bg-primary shadow-[0_0_12px_rgba(255,106,0,0.8)]" />
 
-      <h1 className="mt-6 text-5xl font-extrabold leading-tight lg:text-7xl">
-        Experience RC Racing
-        <span className="block text-red-600">
-          Like Never Before
+        Precision. Performance.
+        Passion.
+      </div>
+
+      <h1 className="mt-7 max-w-[920px] text-[clamp(3.4rem,8vw,7.6rem)] font-black uppercase leading-[0.82] tracking-[-0.065em] text-foreground">
+        Built to
+        <span className="block">
+          Race.
+        </span>
+
+        <span className="mt-2 block text-primary">
+          Made to Win.
         </span>
       </h1>
 
-      <p className="mt-8 text-lg leading-8 text-gray-600">
-        Shop premium remote controlled cars, original spare parts,
-        3D printed accessories, and participate in exciting RC racing
-        events—all in one place.
+      <p className="mt-8 max-w-xl text-base leading-7 text-muted-foreground sm:text-lg sm:leading-8">
+        Premium RC cars,
+        performance parts and
+        accessories for people who
+        expect more from every
+        corner, jump and straight.
       </p>
 
-      <CTAButtons />
+      <CTAButtons className="mt-9" />
+
+      <div className="mt-10 flex flex-wrap gap-x-6 gap-y-4 border-t border-white/8 pt-6">
+        {highlights.map(
+          ({
+            icon: Icon,
+            label,
+          }) => (
+            <div
+              key={
+                label
+              }
+              className="flex items-center gap-2.5"
+            >
+              <span className="flex size-8 items-center justify-center rounded-lg border border-primary/25 bg-primary/8 text-primary">
+                <Icon className="size-4" />
+              </span>
+
+              <span className="text-xs font-semibold uppercase tracking-[0.08em] text-muted-foreground">
+                {label}
+              </span>
+            </div>
+          ),
+        )}
+      </div>
     </div>
   );
 }
