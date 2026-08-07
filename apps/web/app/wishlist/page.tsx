@@ -1,31 +1,62 @@
 "use client";
 
 import Link from "next/link";
+
 import {
   Heart,
+  LoaderCircle,
   Trash2,
 } from "lucide-react";
+
+import {
+  toast,
+} from "sonner";
 
 import Container from "@/components/layout/Container";
 import Section from "@/components/layout/Section";
 import ProductCard from "@/components/products/ProductCard";
+
 import {
   Button,
   buttonVariants,
 } from "@/components/ui/button";
-import { products } from "@/data/products";
-import { useWishlistStore } from "@/store/wishlist-store";
+
+import {
+  ApiClientError,
+} from "@/lib/api/client";
+
+import {
+  useAuthStore,
+} from "@/store/auth-store";
+
+import {
+  useWishlistStore,
+} from "@/store/wishlist-store";
 
 export default function WishlistPage() {
-  const wishlistProductIds =
-    useWishlistStore(
+  const authStatus =
+    useAuthStore(
       (state) =>
-        state.wishlistProductIds,
+        state.status,
     );
 
-  const hasHydrated = useWishlistStore(
-    (state) => state.hasHydrated,
-  );
+  const items =
+    useWishlistStore(
+      (state) =>
+        state.items,
+    );
+
+  const hasHydrated =
+    useWishlistStore(
+      (state) =>
+        state.hasHydrated,
+    );
+
+  const isLoading =
+    useWishlistStore(
+      (state) =>
+        state.isLoading,
+    );
 
   const clearWishlist =
     useWishlistStore(
@@ -33,22 +64,75 @@ export default function WishlistPage() {
         state.clearWishlist,
     );
 
-  const wishlistProducts =
-    products.filter((product) =>
-      wishlistProductIds.includes(
-        product.id,
-      ),
-    );
+  async function handleClearWishlist() {
+    try {
+      await clearWishlist();
 
-  if (!hasHydrated) {
+      toast.success(
+        "Your wishlist has been cleared.",
+      );
+    } catch (error) {
+      toast.error(
+        error instanceof
+        ApiClientError
+          ? error.message
+          : "Unable to clear your wishlist.",
+      );
+    }
+  }
+
+  if (
+    authStatus ===
+      "loading" ||
+    !hasHydrated
+  ) {
     return (
       <main>
         <Section>
           <Container>
             <div className="rounded-2xl border p-10 text-center">
-              <p className="text-muted-foreground">
+              <LoaderCircle className="mx-auto h-7 w-7 animate-spin text-red-600" />
+
+              <p className="mt-3 text-muted-foreground">
                 Loading your wishlist...
               </p>
+            </div>
+          </Container>
+        </Section>
+      </main>
+    );
+  }
+
+  if (
+    authStatus !==
+    "authenticated"
+  ) {
+    return (
+      <main>
+        <Section>
+          <Container>
+            <div className="mx-auto max-w-xl rounded-3xl border px-6 py-16 text-center">
+              <Heart className="mx-auto h-9 w-9 text-red-600" />
+
+              <h1 className="mt-5 text-3xl font-bold">
+                Sign in to view your wishlist
+              </h1>
+
+              <p className="mt-3 text-muted-foreground">
+                Save your favourite
+                HotLap products and
+                access them from any
+                signed-in device.
+              </p>
+
+              <Link
+                href="/login"
+                className={`${buttonVariants({
+                  size: "lg",
+                })} mt-7`}
+              >
+                Sign In
+              </Link>
             </div>
           </Container>
         </Section>
@@ -71,35 +155,50 @@ export default function WishlistPage() {
               </h1>
 
               <p className="mt-4 text-muted-foreground">
-                {wishlistProducts.length}{" "}
-                {wishlistProducts.length === 1
+                {items.length}{" "}
+                {items.length ===
+                1
                   ? "product"
                   : "products"}{" "}
                 saved
               </p>
             </div>
 
-            {wishlistProducts.length >
+            {items.length >
               0 && (
               <Button
                 type="button"
                 variant="outline"
-                onClick={clearWishlist}
+                disabled={
+                  isLoading
+                }
+                onClick={() => {
+                  void handleClearWishlist();
+                }}
               >
-                <Trash2 className="h-4 w-4" />
+                {isLoading ? (
+                  <LoaderCircle className="h-4 w-4 animate-spin" />
+                ) : (
+                  <Trash2 className="h-4 w-4" />
+                )}
+
                 Clear Wishlist
               </Button>
             )}
           </div>
 
-          {wishlistProducts.length >
+          {items.length >
           0 ? (
             <div className="mt-12 grid gap-8 md:grid-cols-2 xl:grid-cols-3">
-              {wishlistProducts.map(
-                (product) => (
+              {items.map(
+                (item) => (
                   <ProductCard
-                    key={product.id}
-                    product={product}
+                    key={
+                      item.id
+                    }
+                    product={
+                      item.product
+                    }
                   />
                 ),
               )}
@@ -115,9 +214,11 @@ export default function WishlistPage() {
               </h2>
 
               <p className="mx-auto mt-3 max-w-md text-muted-foreground">
-                Save products you are interested
-                in and return to them whenever
-                you are ready.
+                Save products you are
+                interested in and
+                return to them
+                whenever you are
+                ready.
               </p>
 
               <Link

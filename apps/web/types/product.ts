@@ -1,47 +1,92 @@
-export type ProductCategory =
-  | "rc-cars"
-  | "spare-parts"
-  | "batteries-chargers"
-  | "electronics"
-  | "wheels-tires"
-  | "3d-printed-accessories"
-  | "merchandise";
+export type ProductCategory = {
+  id: string;
+  name: string;
+  slug: string;
+};
 
 export type ProductBadge =
   | "new"
   | "featured"
   | "sale"
-  | "best-seller";
+  | "best-seller"
+  | string;
+
+export type ProductImage = {
+  id: string;
+  url: string;
+  alt: string;
+  sortOrder: number;
+  isPrimary: boolean;
+};
 
 export type Product = {
   id: string;
-  slug: string;
+
   name: string;
+  slug: string;
+  sku: string;
+  brand: string;
 
   shortDescription: string;
   description: string;
 
-  brand: string;
-  category: ProductCategory;
-
   price: number;
-  compareAtPrice?: number;
-  currency: "INR";
+  compareAtPrice: number | null;
+  currency: string;
 
-  sku: string;
   stockQuantity: number;
+  isInStock: boolean;
+  lowStockThreshold: number;
 
-  rating: number;
+  isFeatured: boolean;
+
+  ratingAverage: number;
   reviewCount: number;
 
-  featured: boolean;
+  specifications: Record<
+    string,
+    string
+  >;
+
   badges: ProductBadge[];
 
-  images: {
-  id: string;
-  url: string;
-  alt: string;
-}[];
+  category: ProductCategory;
 
-  specifications: Record<string, string>;
+  images: ProductImage[];
+
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type ProductListResponse = {
+  products: Product[];
+
+  pagination: {
+    page: number;
+    pageSize: number;
+    totalItems: number;
+    totalPages: number;
+    hasPreviousPage: boolean;
+    hasNextPage: boolean;
+  };
+
+  filters: {
+    search: string | null;
+    category: string | null;
+    brand: string | null;
+    minimumPrice: number | null;
+    maximumPrice: number | null;
+    inStock: boolean | null;
+    featured: boolean | null;
+    sort: string;
+  };
+};
+
+export type FeaturedProductsResponse = {
+  products: Product[];
+  totalItems: number;
+};
+
+export type ProductDetailsResponse = {
+  product: Product;
 };

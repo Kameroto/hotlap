@@ -1,290 +1,357 @@
 import { create } from "zustand";
 
 import {
-  createJSONStorage,
-  persist,
-} from "zustand/middleware";
+  addCartItem,
+  applyCartCoupon,
+  getCart,
+  removeCartCoupon,
+  removeCartItem,
+  updateCartItem,
+} from "@/lib/api/client";
 
-export type CartItem = {
-  productId: string;
-  quantity: number;
-};
+import type {
+  ServerCart,
+} from "@/lib/api/types";
 
 type CartState = {
-  items: CartItem[];
-  appliedPromotionCode: string | null;
+  cart: ServerCart | null;
+
   hasHydrated: boolean;
+  isLoading: boolean;
+
+  initialize: () => Promise<void>;
 
   addItem: (
     productId: string,
-    maximumQuantity: number,
-  ) => void;
+    quantity?: number,
+  ) => Promise<void>;
 
-  removeItem: (productId: string) => void;
+  removeItem: (
+    productId: string,
+  ) => Promise<void>;
 
   increaseQuantity: (
     productId: string,
-    maximumQuantity: number,
-  ) => void;
+    currentQuantity: number,
+  ) => Promise<void>;
 
   decreaseQuantity: (
     productId: string,
-  ) => void;
+    currentQuantity: number,
+  ) => Promise<void>;
 
   setQuantity: (
     productId: string,
     quantity: number,
-    maximumQuantity: number,
-  ) => void;
+  ) => Promise<void>;
 
   applyPromotionCode: (
     promotionCode: string,
-  ) => void;
+  ) => Promise<void>;
 
-  removePromotionCode: () => void;
+  removePromotionCode: () => Promise<void>;
 
-  clearCart: () => void;
+  refreshCart: () => Promise<void>;
+
+  clearLocalCart: () => void;
 
   setHasHydrated: (
     hasHydrated: boolean,
   ) => void;
 };
 
-export const CART_STORAGE_KEY =
-  "hotlap-cart-store";
+let initializationPromise:
+  | Promise<void>
+  | null = null;
 
 export const useCartStore =
   create<CartState>()(
-    persist(
-      (set) => ({
-        items: [],
+    (set, get) => ({
+      cart: null,
 
-        appliedPromotionCode: null,
+      hasHydrated: false,
+      isLoading: false,
 
-        hasHydrated: false,
+      initialize: async () => {
+        if (
+          get().hasHydrated
+        ) {
+          return;
+        }
 
-        addItem: (
-          productId,
-          maximumQuantity,
-        ) => {
-          if (maximumQuantity <= 0) {
-            return;
-          }
+        if (
+          initializationPromise
+        ) {
+          return initializationPromise;
+        }
 
-          set((state) => {
-            const existingItem =
-              state.items.find(
-                (item) =>
-                  item.productId ===
-                  productId,
-              );
+        initializationPromise =
+          (async () => {
+            set({
+              isLoading: true,
+            });
 
-            if (existingItem) {
-              return {
-                items: state.items.map(
-                  (item) =>
-                    item.productId ===
-                    productId
-                      ? {
-                          ...item,
-                          quantity: Math.min(
-                            item.quantity +
-                              1,
-                            maximumQuantity,
-                          ),
-                        }
-                      : item,
-                ),
-              };
+            try {
+              const cart =
+                await getCart();
+
+              set({
+                cart,
+                hasHydrated: true,
+              });
+            } finally {
+              set({
+                isLoading: false,
+              });
+
+              initializationPromise =
+                null;
             }
+          })();
 
-            return {
-              items: [
-                ...state.items,
-                {
-                  productId,
-                  quantity: 1,
-                },
-              ],
-            };
+        return initializationPromise;
+      },
+
+      refreshCart: async () => {
+        set({
+          isLoading: true,
+        });
+
+        try {
+          const cart =
+            await getCart();
+
+          set({
+            cart,
+            hasHydrated: true,
           });
-        },
-
-        removeItem: (productId) => {
-          set((state) => {
-            const nextItems =
-              state.items.filter(
-                (item) =>
-                  item.productId !==
-                  productId,
-              );
-
-            return {
-              items: nextItems,
-
-              appliedPromotionCode:
-                nextItems.length === 0
-                  ? null
-                  : state.appliedPromotionCode,
-            };
+        } finally {
+          set({
+            isLoading: false,
           });
-        },
+        }
+      },
 
-        increaseQuantity: (
-          productId,
-          maximumQuantity,
-        ) => {
-          set((state) => ({
-            items: state.items.map(
-              (item) =>
-                item.productId ===
-                productId
-                  ? {
-                      ...item,
-                      quantity: Math.min(
-                        item.quantity + 1,
-                        maximumQuantity,
-                      ),
-                    }
-                  : item,
-            ),
-          }));
-        },
+      addItem: async (
+        productId,
+        quantity = 1,
+      ) => {
+        set({
+          isLoading: true,
+        });
 
-        decreaseQuantity: (
-          productId,
-        ) => {
-          set((state) => {
-            const nextItems =
-              state.items.flatMap(
-                (item) => {
-                  if (
-                    item.productId !==
-                    productId
-                  ) {
-                    return [item];
-                  }
+        try {
+          const cart =
+            await addCartItem({
+              productId,
+              quantity,
+            });
 
-                  if (
-                    item.quantity <= 1
-                  ) {
-                    return [];
-                  }
-
-                  return [
-                    {
-                      ...item,
-                      quantity:
-                        item.quantity - 1,
-                    },
-                  ];
-                },
-              );
-
-            return {
-              items: nextItems,
-
-              appliedPromotionCode:
-                nextItems.length === 0
-                  ? null
-                  : state.appliedPromotionCode,
-            };
+          set({
+            cart,
+            hasHydrated: true,
           });
-        },
+        } finally {
+          set({
+            isLoading: false,
+          });
+        }
+      },
 
-        setQuantity: (
-          productId,
-          quantity,
-          maximumQuantity,
-        ) => {
-          const normalizedQuantity =
-            Math.max(
-              0,
-              Math.min(
-                quantity,
-                maximumQuantity,
-              ),
+      removeItem: async (
+        productId,
+      ) => {
+        set({
+          isLoading: true,
+        });
+
+        try {
+          const cart =
+            await removeCartItem(
+              productId,
             );
 
-          set((state) => {
-            const nextItems =
-              normalizedQuantity === 0
-                ? state.items.filter(
-                    (item) =>
-                      item.productId !==
-                      productId,
-                  )
-                : state.items.map(
-                    (item) =>
-                      item.productId ===
-                      productId
-                        ? {
-                            ...item,
-                            quantity:
-                              normalizedQuantity,
-                          }
-                        : item,
-                  );
-
-            return {
-              items: nextItems,
-
-              appliedPromotionCode:
-                nextItems.length === 0
-                  ? null
-                  : state.appliedPromotionCode,
-            };
+          set({
+            cart,
+            hasHydrated: true,
           });
-        },
+        } finally {
+          set({
+            isLoading: false,
+          });
+        }
+      },
 
-        applyPromotionCode: (
+      increaseQuantity: async (
+        productId,
+        currentQuantity,
+      ) => {
+        set({
+          isLoading: true,
+        });
+
+        try {
+          const cart =
+            await updateCartItem(
+              productId,
+              {
+                quantity:
+                  currentQuantity +
+                  1,
+              },
+            );
+
+          set({
+            cart,
+            hasHydrated: true,
+          });
+        } finally {
+          set({
+            isLoading: false,
+          });
+        }
+      },
+
+      decreaseQuantity: async (
+        productId,
+        currentQuantity,
+      ) => {
+        if (
+          currentQuantity <= 1
+        ) {
+          await get().removeItem(
+            productId,
+          );
+
+          return;
+        }
+
+        set({
+          isLoading: true,
+        });
+
+        try {
+          const cart =
+            await updateCartItem(
+              productId,
+              {
+                quantity:
+                  currentQuantity -
+                  1,
+              },
+            );
+
+          set({
+            cart,
+            hasHydrated: true,
+          });
+        } finally {
+          set({
+            isLoading: false,
+          });
+        }
+      },
+
+      setQuantity: async (
+        productId,
+        quantity,
+      ) => {
+        if (
+          quantity <= 0
+        ) {
+          await get().removeItem(
+            productId,
+          );
+
+          return;
+        }
+
+        set({
+          isLoading: true,
+        });
+
+        try {
+          const cart =
+            await updateCartItem(
+              productId,
+              {
+                quantity,
+              },
+            );
+
+          set({
+            cart,
+            hasHydrated: true,
+          });
+        } finally {
+          set({
+            isLoading: false,
+          });
+        }
+      },
+
+      applyPromotionCode:
+        async (
           promotionCode,
         ) => {
           set({
-            appliedPromotionCode:
-              promotionCode
-                .trim()
-                .toUpperCase(),
+            isLoading: true,
           });
+
+          try {
+            const cart =
+              await applyCartCoupon({
+                code:
+                  promotionCode
+                    .trim()
+                    .toUpperCase(),
+              });
+
+            set({
+              cart,
+              hasHydrated: true,
+            });
+          } finally {
+            set({
+              isLoading: false,
+            });
+          }
         },
 
-        removePromotionCode: () => {
+      removePromotionCode:
+        async () => {
           set({
-            appliedPromotionCode: null,
+            isLoading: true,
           });
+
+          try {
+            const cart =
+              await removeCartCoupon();
+
+            set({
+              cart,
+              hasHydrated: true,
+            });
+          } finally {
+            set({
+              isLoading: false,
+            });
+          }
         },
 
-        clearCart: () => {
-          set({
-            items: [],
-            appliedPromotionCode: null,
-          });
-        },
-
-        setHasHydrated: (
-          hasHydrated,
-        ) => {
-          set({
-            hasHydrated,
-          });
-        },
-      }),
-      {
-        name: CART_STORAGE_KEY,
-
-        storage: createJSONStorage(
-          () =>
-            window.localStorage,
-        ),
-
-        partialize: (state) => ({
-          items: state.items,
-
-          appliedPromotionCode:
-            state.appliedPromotionCode,
-        }),
-
-        skipHydration: true,
+      clearLocalCart: () => {
+        set({
+          cart: null,
+          hasHydrated: true,
+        });
       },
-    ),
+
+      setHasHydrated: (
+        hasHydrated,
+      ) => {
+        set({
+          hasHydrated,
+        });
+      },
+    }),
   );

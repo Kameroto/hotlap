@@ -1,6 +1,10 @@
-import type { Metadata } from "next";
+import type {
+  Metadata,
+} from "next";
 
-import { notFound } from "next/navigation";
+import {
+  notFound,
+} from "next/navigation";
 
 import AddToCartButton from "@/components/cart/AddToCartButton";
 
@@ -13,8 +17,7 @@ import ProductPrice from "@/components/products/ProductPrice";
 import ProductRating from "@/components/products/ProductRating";
 
 import {
-  getAllProducts,
-  getProductBySlug,
+  findProductBySlug,
 } from "@/lib/products";
 
 type ProductDetailsPageProps = {
@@ -23,28 +26,31 @@ type ProductDetailsPageProps = {
   }>;
 };
 
-export function generateStaticParams() {
-  return getAllProducts().map((product) => ({
-    slug: product.slug,
-  }));
-}
+export const dynamic =
+  "force-dynamic";
 
 export async function generateMetadata({
   params,
 }: ProductDetailsPageProps): Promise<Metadata> {
-  const { slug } = await params;
+  const { slug } =
+    await params;
 
   const product =
-    getProductBySlug(slug);
+    await findProductBySlug(
+      slug,
+    );
 
   if (!product) {
     return {
-      title: "Product Not Found",
+      title:
+        "Product Not Found",
     };
   }
 
   return {
-    title: product.name,
+    title:
+      product.name,
+
     description:
       product.shortDescription,
   };
@@ -53,20 +59,27 @@ export async function generateMetadata({
 export default async function ProductDetailsPage({
   params,
 }: ProductDetailsPageProps) {
-  const { slug } = await params;
+  const { slug } =
+    await params;
 
   const product =
-    getProductBySlug(slug);
+    await findProductBySlug(
+      slug,
+    );
 
   if (!product) {
     notFound();
   }
 
   const primaryImage =
+    product.images.find(
+      (image) =>
+        image.isPrimary,
+    ) ??
     product.images[0];
 
   const isInStock =
-    product.stockQuantity > 0;
+    product.isInStock;
 
   return (
     <main>
@@ -75,27 +88,44 @@ export default async function ProductDetailsPage({
           <div className="grid gap-12 lg:grid-cols-2 lg:gap-16">
             <div className="group overflow-hidden rounded-3xl border bg-card">
               <ProductImage
-                src={primaryImage?.url}
+                src={
+                  primaryImage?.url
+                }
                 alt={
                   primaryImage?.alt ??
                   product.name
                 }
-                badges={product.badges}
+                badges={
+                  product.badges
+                }
               />
             </div>
 
             <div>
               <p className="text-sm font-semibold uppercase tracking-[0.2em] text-muted-foreground">
-                {product.brand}
+                {
+                  product.brand
+                }
               </p>
 
               <h1 className="mt-3 text-4xl font-bold tracking-tight lg:text-5xl">
-                {product.name}
+                {
+                  product.name
+                }
               </h1>
+
+              <p className="mt-3 text-sm text-muted-foreground">
+                {
+                  product.category
+                    .name
+                }
+              </p>
 
               <div className="mt-5">
                 <ProductRating
-                  rating={product.rating}
+                  rating={
+                    product.ratingAverage
+                  }
                   reviewCount={
                     product.reviewCount
                   }
@@ -104,13 +134,14 @@ export default async function ProductDetailsPage({
 
               <div className="mt-6">
                 <ProductPrice
-                  price={product.price}
+                  price={
+                    product.price
+                  }
                   compareAtPrice={
-                    product.compareAtPrice
+                    product.compareAtPrice ??
+                    undefined
                   }
-                  currency={
-                    product.currency
-                  }
+                  currency="INR"
                 />
               </div>
 
@@ -127,12 +158,18 @@ export default async function ProductDetailsPage({
               </p>
 
               <p className="mt-6 text-lg leading-8 text-muted-foreground">
-                {product.description}
+                {
+                  product.description
+                }
               </p>
 
               <AddToCartButton
-                productId={product.id}
-                productName={product.name}
+                productId={
+                  product.id
+                }
+                productName={
+                  product.name
+                }
                 stockQuantity={
                   product.stockQuantity
                 }
@@ -142,7 +179,9 @@ export default async function ProductDetailsPage({
 
               <div className="mt-10">
                 <ProductBadges
-                  badges={product.badges}
+                  badges={
+                    product.badges
+                  }
                 />
               </div>
             </div>
@@ -158,17 +197,26 @@ export default async function ProductDetailsPage({
                 {Object.entries(
                   product.specifications,
                 ).map(
-                  ([label, value]) => (
+                  ([
+                    label,
+                    value,
+                  ]) => (
                     <div
-                      key={label}
+                      key={
+                        label
+                      }
                       className="grid gap-2 px-6 py-5 sm:grid-cols-2"
                     >
                       <dt className="font-medium">
-                        {label}
+                        {
+                          label
+                        }
                       </dt>
 
                       <dd className="text-muted-foreground">
-                        {value}
+                        {
+                          value
+                        }
                       </dd>
                     </div>
                   ),

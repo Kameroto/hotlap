@@ -5,12 +5,14 @@ import {
   loginUser,
   logoutUser,
   registerUser,
+  updateAccountProfile,
 } from "@/lib/api/client";
 
 import type {
   LoginRequest,
   PublicUser,
   RegisterRequest,
+  UpdateProfileRequest,
 } from "@/lib/api/types";
 
 type AuthenticationStatus =
@@ -32,6 +34,10 @@ type AuthState = {
 
   register: (
     information: RegisterRequest,
+  ) => Promise<PublicUser>;
+
+  updateProfile: (
+    information: UpdateProfileRequest,
   ) => Promise<PublicUser>;
 
   logout: () => Promise<void>;
@@ -156,6 +162,35 @@ export const useAuthStore =
 
         throw error;
       }
+    },
+
+    updateProfile: async (
+      information,
+    ) => {
+      const profile =
+        await updateAccountProfile(
+          information,
+        );
+
+      const updatedUser: PublicUser = {
+        id: profile.id,
+        email: profile.email,
+        firstName: profile.firstName,
+        lastName: profile.lastName,
+        phone: profile.phone,
+        role: profile.role,
+        emailVerifiedAt:
+          profile.emailVerifiedAt,
+        createdAt: profile.createdAt,
+      };
+
+      set({
+        user: updatedUser,
+        status: "authenticated",
+        hasInitialized: true,
+      });
+
+      return updatedUser;
     },
 
     logout: async () => {

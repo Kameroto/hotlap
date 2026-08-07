@@ -1,119 +1,306 @@
 import { create } from "zustand";
+
 import {
-  createJSONStorage,
-  persist,
-} from "zustand/middleware";
+  ApiClientError,
+  addWishlistItem,
+  getWishlist,
+  removeWishlistItem,
+} from "@/lib/api/client";
+
+import type {
+  WishlistItem,
+} from "@/lib/api/types";
 
 type WishlistState = {
-  wishlistProductIds: string[];
-  hasHydrated: boolean;
+  items: WishlistItem[];
 
-  isInWishlist: (productId: string) => boolean;
-  addToWishlist: (productId: string) => void;
-  removeFromWishlist: (productId: string) => void;
-  toggleWishlist: (productId: string) => void;
-  replaceWishlist: (productIds: string[]) => void;
-  clearWishlist: () => void;
-  setHasHydrated: (hasHydrated: boolean) => void;
+  hasHydrated: boolean;
+  isLoading: boolean;
+
+  initialize: () => Promise<void>;
+  refreshWishlist: () => Promise<void>;
+
+  isInWishlist: (
+    productId: string,
+  ) => boolean;
+
+  addToWishlist: (
+    productId: string,
+  ) => Promise<void>;
+
+  removeFromWishlist: (
+    productId: string,
+  ) => Promise<void>;
+
+  toggleWishlist: (
+    productId: string,
+  ) => Promise<void>;
+
+  clearWishlist: () => Promise<void>;
+
+  clearLocalWishlist: () => void;
+
+  setHasHydrated: (
+    hasHydrated: boolean,
+  ) => void;
 };
 
-export const WISHLIST_STORAGE_KEY =
-  "hotlap-wishlist-store";
-
-export const LEGACY_WISHLIST_STORAGE_KEY =
-  "hotlap-wishlist";
+let initializationPromise:
+  | Promise<void>
+  | null = null;
 
 export const useWishlistStore =
   create<WishlistState>()(
-    persist(
-      (set, get) => ({
-        wishlistProductIds: [],
-        hasHydrated: false,
+    (set, get) => ({
+      items: [],
 
-        isInWishlist: (productId) =>
-          get().wishlistProductIds.includes(productId),
+      hasHydrated: false,
+      isLoading: false,
 
-        addToWishlist: (productId) => {
-          set((state) => {
+      initialize: async () => {
+        if (
+          get().hasHydrated
+        ) {
+          return;
+        }
+
+        if (
+          initializationPromise
+        ) {
+          return initializationPromise;
+        }
+
+        initializationPromise =
+          (async () => {
+            set({
+              isLoading: true,
+            });
+
+            try {
+              const wishlist =
+                await getWishlist();
+
+              set({
+                items:
+                  wishlist.items,
+
+                hasHydrated:
+                  true,
+              });
+            } catch (error) {
+              if (
+                error instanceof
+                  ApiClientError &&
+                error.statusCode ===
+                  401
+              ) {
+                set({
+                  items: [],
+                  hasHydrated:
+                    true,
+                });
+
+                return;
+              }
+
+              throw error;
+            } finally {
+              set({
+                isLoading: false,
+              });
+
+              initializationPromise =
+                null;
+            }
+          })();
+
+        return initializationPromise;
+      },
+
+      refreshWishlist:
+        async () => {
+          set({
+            isLoading: true,
+          });
+
+          try {
+            const wishlist =
+              await getWishlist();
+
+            set({
+              items:
+                wishlist.items,
+
+              hasHydrated:
+                true,
+            });
+          } catch (error) {
             if (
-              state.wishlistProductIds.includes(productId)
+              error instanceof
+                ApiClientError &&
+              error.statusCode ===
+                401
             ) {
-              return state;
+              set({
+                items: [],
+                hasHydrated:
+                  true,
+              });
+
+              return;
             }
 
-            return {
-              wishlistProductIds: [
-                ...state.wishlistProductIds,
-                productId,
-              ],
-            };
+            throw error;
+          } finally {
+            set({
+              isLoading: false,
+            });
+          }
+        },
+
+      isInWishlist: (
+        productId,
+      ) =>
+        get().items.some(
+          (item) =>
+            item.product.id ===
+            productId,
+        ),
+
+      addToWishlist:
+        async (
+          productId,
+        ) => {
+          set({
+            isLoading: true,
           });
+
+          try {
+            const wishlist =
+              await addWishlistItem({
+                productId,
+              });
+
+            set({
+              items:
+                wishlist.items,
+
+              hasHydrated:
+                true,
+            });
+          } finally {
+            set({
+              isLoading: false,
+            });
+          }
         },
 
-        removeFromWishlist: (productId) => {
-          set((state) => ({
-            wishlistProductIds:
-              state.wishlistProductIds.filter(
-                (currentProductId) =>
-                  currentProductId !== productId,
-              ),
-          }));
-        },
+      removeFromWishlist:
+        async (
+          productId,
+        ) => {
+          set({
+            isLoading: true,
+          });
 
-        toggleWishlist: (productId) => {
-          set((state) => {
-            const productIsSaved =
-              state.wishlistProductIds.includes(
+          try {
+            const wishlist =
+              await removeWishlistItem(
                 productId,
               );
 
-            return {
-              wishlistProductIds: productIsSaved
-                ? state.wishlistProductIds.filter(
-                    (currentProductId) =>
-                      currentProductId !== productId,
-                  )
-                : [
-                    ...state.wishlistProductIds,
-                    productId,
-                  ],
-            };
-          });
+            set({
+              items:
+                wishlist.items,
+
+              hasHydrated:
+                true,
+            });
+          } finally {
+            set({
+              isLoading: false,
+            });
+          }
         },
 
-        replaceWishlist: (productIds) => {
+      toggleWishlist:
+        async (
+          productId,
+        ) => {
+          const productIsSaved =
+            get().isInWishlist(
+              productId,
+            );
+
+          if (
+            productIsSaved
+          ) {
+            await get().removeFromWishlist(
+              productId,
+            );
+
+            return;
+          }
+
+          await get().addToWishlist(
+            productId,
+          );
+        },
+
+      clearWishlist:
+        async () => {
+          const productIds =
+            get().items.map(
+              (item) =>
+                item.product.id,
+            );
+
           set({
-            wishlistProductIds: [
-              ...new Set(productIds),
-            ],
+            isLoading: true,
           });
+
+          try {
+            for (
+              const productId of
+              productIds
+            ) {
+              const wishlist =
+                await removeWishlistItem(
+                  productId,
+                );
+
+              set({
+                items:
+                  wishlist.items,
+              });
+            }
+
+            set({
+              items: [],
+              hasHydrated:
+                true,
+            });
+          } finally {
+            set({
+              isLoading: false,
+            });
+          }
         },
 
-        clearWishlist: () => {
-          set({
-            wishlistProductIds: [],
-          });
-        },
-
-        setHasHydrated: (hasHydrated) => {
-          set({
-            hasHydrated,
-          });
-        },
-      }),
-      {
-        name: WISHLIST_STORAGE_KEY,
-
-        storage: createJSONStorage(
-          () => window.localStorage,
-        ),
-
-        partialize: (state) => ({
-          wishlistProductIds:
-            state.wishlistProductIds,
-        }),
-
-        skipHydration: true,
+      clearLocalWishlist: () => {
+        set({
+          items: [],
+          hasHydrated:
+            true,
+        });
       },
-    ),
+
+      setHasHydrated: (
+        hasHydrated,
+      ) => {
+        set({
+          hasHydrated,
+        });
+      },
+    }),
   );

@@ -5,30 +5,43 @@ import {
 } from "react";
 
 import Link from "next/link";
+import {
+  useRouter,
+} from "next/navigation";
 
 import {
-  CheckCircle2,
+  LogIn,
   ShoppingBag,
 } from "lucide-react";
 
 import {
   useForm,
-  useWatch,
   type FieldError,
 } from "react-hook-form";
 
-import { zodResolver } from "@hookform/resolvers/zod";
+import {
+  zodResolver,
+} from "@hookform/resolvers/zod";
+
+import {
+  toast,
+} from "sonner";
 
 import CheckoutOrderSummary from "@/components/checkout/CheckoutOrderSummary";
 import ShippingMethodSelector from "@/components/checkout/ShippingMethodSelector";
-
 import Container from "@/components/layout/Container";
 
 import {
   buttonVariants,
 } from "@/components/ui/button";
 
-import { products } from "@/data/products";
+import {
+  ApiClientError,
+} from "@/lib/api/client";
+
+import {
+  createOrder,
+} from "@/lib/api/orders";
 
 import {
   checkoutSchema,
@@ -36,15 +49,21 @@ import {
 } from "@/lib/checkout-schema";
 
 import {
-  validatePromotion,
-} from "@/lib/promotions";
-
-import {
   getShippingMethod,
   type ShippingMethodId,
 } from "@/lib/shipping";
 
-import { useCartStore } from "@/store/cart-store";
+import {
+  cn,
+} from "@/lib/utils";
+
+import {
+  useAuthStore,
+} from "@/store/auth-store";
+
+import {
+  useCartStore,
+} from "@/store/cart-store";
 
 const indianStates = [
   "Andhra Pradesh",
@@ -106,166 +125,94 @@ function FieldErrorMessage({
 }
 
 export default function CheckoutForm() {
-  const [
-    completedOrderNumber,
-    setCompletedOrderNumber,
-  ] = useState<string | null>(null);
+  const router =
+    useRouter();
 
-  const items = useCartStore(
-    (state) => state.items,
-  );
-
-  const appliedPromotionCode =
-    useCartStore(
+  const user =
+    useAuthStore(
       (state) =>
-        state.appliedPromotionCode,
+        state.user,
     );
 
-  const hasHydrated = useCartStore(
-    (state) => state.hasHydrated,
-  );
+  const authStatus =
+    useAuthStore(
+      (state) =>
+        state.status,
+    );
 
-  const clearCart = useCartStore(
-    (state) => state.clearCart,
-  );
+  const cart =
+    useCartStore(
+      (state) =>
+        state.cart,
+    );
+
+  const cartHasHydrated =
+    useCartStore(
+      (state) =>
+        state.hasHydrated,
+    );
+
+  const refreshCart =
+    useCartStore(
+      (state) =>
+        state.refreshCart,
+    );
+
+  const [
+    selectedShippingMethod,
+    setSelectedShippingMethod,
+  ] =
+    useState<ShippingMethodId>(
+      "standard",
+    );
 
   const {
     register,
     handleSubmit,
-    control,
+
     formState: {
       errors,
       isSubmitting,
     },
   } = useForm<CheckoutFormValues>({
-    resolver: zodResolver(
-      checkoutSchema,
-    ),
+    resolver:
+      zodResolver(
+        checkoutSchema,
+      ),
 
     defaultValues: {
-      email: "",
-      phone: "",
-      firstName: "",
-      lastName: "",
+      email:
+        user?.email ?? "",
+
+      phone:
+        user?.phone ?? "",
+
+      firstName:
+        user?.firstName ?? "",
+
+      lastName:
+        user?.lastName ?? "",
+
       addressLine1: "",
       addressLine2: "",
       city: "",
       state: "",
       postalCode: "",
-      shippingMethod: "standard",
+
+      shippingMethod:
+        "standard",
+
       orderNotes: "",
-      acceptTerms: false,
+
+      acceptTerms:
+        false,
     },
   });
 
-  const selectedShippingMethod =
-    useWatch({
-      control,
-      name: "shippingMethod",
-    });
-
-  const cartProducts =
-    items.flatMap((cartItem) => {
-      const product = products.find(
-        (candidateProduct) =>
-          candidateProduct.id ===
-          cartItem.productId,
-      );
-
-      if (!product) {
-        return [];
-      }
-
-      return [
-        {
-          product,
-          quantity: cartItem.quantity,
-        },
-      ];
-    });
-
-  const subtotal =
-    cartProducts.reduce(
-      (total, cartProduct) =>
-        total +
-        cartProduct.product.price *
-          cartProduct.quantity,
-      0,
-    );
-
-  const promotionResult =
-    appliedPromotionCode
-      ? validatePromotion(
-          appliedPromotionCode,
-          subtotal,
-        )
-      : null;
-
-  const discountAmount =
-    promotionResult?.isValid
-      ? promotionResult.discountAmount
-      : 0;
-
-  const subtotalAfterDiscount =
-    Math.max(
-      subtotal - discountAmount,
-      0,
-    );
-
-  const shippingMethod =
-    getShippingMethod(
-      (
-        selectedShippingMethod ??
-        "standard"
-      ) as ShippingMethodId,
-      subtotal,
-    );
-
-  const shippingCost =
-    shippingMethod.cost;
-
-  const total =
-    subtotalAfterDiscount +
-    shippingCost;
-
-  async function submitCheckout(
-    values: CheckoutFormValues,
+  if (
+    authStatus === "loading" ||
+    !cartHasHydrated
   ) {
-    await new Promise((resolve) => {
-      window.setTimeout(resolve, 600);
-    });
-
-    const orderNumber = `HL-${crypto
-      .randomUUID()
-      .replaceAll("-", "")
-      .slice(0, 8)
-      .toUpperCase()}`;
-
-    console.info(
-      "Temporary checkout order",
-      {
-        orderNumber,
-        customer: values,
-        cartProducts,
-        appliedPromotionCode:
-          promotionResult?.isValid
-            ? appliedPromotionCode
-            : null,
-        subtotal,
-        discountAmount,
-        shippingMethod,
-        total,
-      },
-    );
-
-    clearCart();
-
-    setCompletedOrderNumber(
-      orderNumber,
-    );
-  }
-
-  if (!hasHydrated) {
     return (
       <Container>
         <div className="rounded-2xl border p-10 text-center">
@@ -277,172 +224,226 @@ export default function CheckoutForm() {
     );
   }
 
-  if (completedOrderNumber) {
+  if (
+    !user ||
+    authStatus !==
+      "authenticated"
+  ) {
     return (
       <Container>
-        <div className="mx-auto max-w-2xl rounded-3xl border px-6 py-16 text-center shadow-sm">
-          <div className="mx-auto flex h-20 w-20 items-center justify-center rounded-full bg-green-100 text-green-700">
-            <CheckCircle2 className="h-10 w-10" />
-          </div>
+        <div className="mx-auto max-w-xl rounded-3xl border p-10 text-center">
+          <LogIn className="mx-auto h-9 w-9 text-red-600" />
 
-          <p className="mt-8 text-sm font-semibold uppercase tracking-[0.2em] text-green-700">
-            Order Confirmed
-          </p>
-
-          <h1 className="mt-3 text-4xl font-bold tracking-tight">
-            Thank you for your order
+          <h1 className="mt-5 text-3xl font-bold">
+            Sign in to checkout
           </h1>
 
-          <p className="mt-5 text-muted-foreground">
-            Your temporary HotLap order
-            number is:
-          </p>
-
-          <p className="mt-2 text-xl font-bold">
-            {completedOrderNumber}
-          </p>
-
-          <p className="mx-auto mt-5 max-w-lg text-muted-foreground">
-            The backend will later store this
-            order and send confirmation details.
-          </p>
-
-          <div className="mt-8 flex flex-col justify-center gap-3 sm:flex-row">
-            <Link
-              href="/products"
-              className={buttonVariants()}
-            >
-              Continue Shopping
-            </Link>
-
-            <Link
-              href="/"
-              className={buttonVariants({
-                variant: "outline",
-              })}
-            >
-              Return Home
-            </Link>
-          </div>
-        </div>
-      </Container>
-    );
-  }
-
-  if (cartProducts.length === 0) {
-    return (
-      <Container>
-        <div className="rounded-3xl border border-dashed px-6 py-20 text-center">
-          <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-muted">
-            <ShoppingBag className="h-7 w-7 text-muted-foreground" />
-          </div>
-
-          <h1 className="mt-6 text-3xl font-bold">
-            Your cart is empty
-          </h1>
-
-          <p className="mx-auto mt-3 max-w-md text-muted-foreground">
-            Add products before continuing
-            to checkout.
+          <p className="mt-3 text-muted-foreground">
+            HotLap checkout requires
+            an account so your order
+            history and delivery
+            details can be stored
+            securely.
           </p>
 
           <Link
-            href="/products"
-            className={`${buttonVariants()} mt-8`}
+            href="/login"
+            className={cn(
+              buttonVariants({
+                size: "lg",
+              }),
+              "mt-7",
+            )}
           >
-            Explore Products
+            Sign In
           </Link>
         </div>
       </Container>
     );
   }
 
+  if (
+    !cart ||
+    cart.items.length === 0
+  ) {
+    return (
+      <Container>
+        <div className="mx-auto max-w-xl rounded-3xl border border-dashed px-6 py-16 text-center">
+          <ShoppingBag className="mx-auto h-9 w-9 text-muted-foreground" />
+
+          <h1 className="mt-5 text-3xl font-bold">
+            Your cart is empty
+          </h1>
+
+          <p className="mt-3 text-muted-foreground">
+            Add products before
+            starting checkout.
+          </p>
+
+          <Link
+            href="/products"
+            className={cn(
+              buttonVariants({
+                size: "lg",
+              }),
+              "mt-7",
+            )}
+          >
+            Browse Products
+          </Link>
+        </div>
+      </Container>
+    );
+  }
+
+  const shippingMethod =
+    getShippingMethod(
+      selectedShippingMethod,
+      cart.subtotal,
+    );
+
+  const total =
+    cart.totalBeforeShipping +
+    shippingMethod.cost;
+
+  async function submitCheckout(
+    values: CheckoutFormValues,
+  ): Promise<void> {
+    try {
+      const response =
+        await createOrder({
+          deliveryAddress: {
+            recipientName:
+              `${values.firstName.trim()} ${values.lastName.trim()}`,
+
+            phone:
+              values.phone.trim(),
+
+            addressLine1:
+              values.addressLine1.trim(),
+
+            addressLine2:
+              values.addressLine2?.trim() ||
+              null,
+
+            city:
+              values.city.trim(),
+
+            state:
+              values.state.trim(),
+
+            postalCode:
+              values.postalCode.trim(),
+
+            country:
+              "India",
+          },
+
+          shippingMethod:
+            values.shippingMethod ===
+            "express"
+              ? "EXPRESS"
+              : "STANDARD",
+
+          paymentMethod:
+            "CASH_ON_DELIVERY",
+
+          notes:
+            values.orderNotes?.trim() ||
+            null,
+        });
+
+      await refreshCart();
+
+      toast.success(
+        `Order ${response.order.orderNumber} placed successfully.`,
+      );
+
+      router.push(
+        `/account/orders/${response.order.orderNumber}`,
+      );
+    } catch (error) {
+      const message =
+        error instanceof
+        ApiClientError
+          ? error.message
+          : "Unable to place your order.";
+
+      toast.error(
+        message,
+      );
+    }
+  }
+
   return (
     <Container>
+      <div className="mb-10">
+        <p className="text-sm font-semibold uppercase tracking-[0.2em] text-red-600">
+          Secure Checkout
+        </p>
+
+        <h1 className="mt-3 text-4xl font-bold tracking-tight lg:text-5xl">
+          Complete Your Order
+        </h1>
+
+        <p className="mt-4 max-w-2xl text-muted-foreground">
+          Confirm your delivery
+          information and shipping
+          preference.
+        </p>
+      </div>
+
       <form
         onSubmit={handleSubmit(
           submitCheckout,
         )}
         noValidate
       >
-        <div className="grid gap-10 lg:grid-cols-[1fr_420px]">
+        <div className="grid gap-10 lg:grid-cols-[1fr_380px]">
           <div className="space-y-8">
             <section className="rounded-2xl border p-6">
               <h2 className="text-2xl font-semibold">
                 Contact Information
               </h2>
 
-              <p className="mt-2 text-sm text-muted-foreground">
-                We’ll use these details for
-                order updates.
-              </p>
-
               <div className="mt-6 grid gap-5 sm:grid-cols-2">
-                <div>
+                <div className="sm:col-span-2">
                   <label
-                    htmlFor="email"
+                    htmlFor="checkout-email"
                     className="text-sm font-medium"
                   >
                     Email address
                   </label>
 
                   <input
-                    id="email"
+                    id="checkout-email"
                     type="email"
                     autoComplete="email"
                     className={
                       inputClassName
                     }
-                    {...register("email")}
+                    {...register(
+                      "email",
+                    )}
                   />
 
                   <FieldErrorMessage
-                    error={errors.email}
-                  />
-                </div>
-
-                <div>
-                  <label
-                    htmlFor="phone"
-                    className="text-sm font-medium"
-                  >
-                    Mobile number
-                  </label>
-
-                  <input
-                    id="phone"
-                    type="tel"
-                    inputMode="numeric"
-                    autoComplete="tel"
-                    className={
-                      inputClassName
+                    error={
+                      errors.email
                     }
-                    {...register("phone")}
-                  />
-
-                  <FieldErrorMessage
-                    error={errors.phone}
                   />
                 </div>
-              </div>
-            </section>
 
-            <section className="rounded-2xl border p-6">
-              <h2 className="text-2xl font-semibold">
-                Delivery Address
-              </h2>
-
-              <div className="mt-6 grid gap-5 sm:grid-cols-2">
                 <div>
                   <label
-                    htmlFor="firstName"
+                    htmlFor="checkout-first-name"
                     className="text-sm font-medium"
                   >
                     First name
                   </label>
 
                   <input
-                    id="firstName"
+                    id="checkout-first-name"
                     autoComplete="given-name"
                     className={
                       inputClassName
@@ -461,14 +462,14 @@ export default function CheckoutForm() {
 
                 <div>
                   <label
-                    htmlFor="lastName"
+                    htmlFor="checkout-last-name"
                     className="text-sm font-medium"
                   >
                     Last name
                   </label>
 
                   <input
-                    id="lastName"
+                    id="checkout-last-name"
                     autoComplete="family-name"
                     className={
                       inputClassName
@@ -487,14 +488,50 @@ export default function CheckoutForm() {
 
                 <div className="sm:col-span-2">
                   <label
-                    htmlFor="addressLine1"
+                    htmlFor="checkout-phone"
+                    className="text-sm font-medium"
+                  >
+                    Mobile number
+                  </label>
+
+                  <input
+                    id="checkout-phone"
+                    type="tel"
+                    inputMode="numeric"
+                    autoComplete="tel"
+                    className={
+                      inputClassName
+                    }
+                    {...register(
+                      "phone",
+                    )}
+                  />
+
+                  <FieldErrorMessage
+                    error={
+                      errors.phone
+                    }
+                  />
+                </div>
+              </div>
+            </section>
+
+            <section className="rounded-2xl border p-6">
+              <h2 className="text-2xl font-semibold">
+                Delivery Address
+              </h2>
+
+              <div className="mt-6 grid gap-5 sm:grid-cols-2">
+                <div className="sm:col-span-2">
+                  <label
+                    htmlFor="checkout-address-1"
                     className="text-sm font-medium"
                   >
                     Address
                   </label>
 
                   <input
-                    id="addressLine1"
+                    id="checkout-address-1"
                     autoComplete="address-line1"
                     className={
                       inputClassName
@@ -513,18 +550,15 @@ export default function CheckoutForm() {
 
                 <div className="sm:col-span-2">
                   <label
-                    htmlFor="addressLine2"
+                    htmlFor="checkout-address-2"
                     className="text-sm font-medium"
                   >
-                    Apartment, building,
-                    landmark
-                    <span className="ml-1 text-muted-foreground">
-                      (optional)
-                    </span>
+                    Apartment, building
+                    or landmark
                   </label>
 
                   <input
-                    id="addressLine2"
+                    id="checkout-address-2"
                     autoComplete="address-line2"
                     className={
                       inputClassName
@@ -537,41 +571,47 @@ export default function CheckoutForm() {
 
                 <div>
                   <label
-                    htmlFor="city"
+                    htmlFor="checkout-city"
                     className="text-sm font-medium"
                   >
                     City
                   </label>
 
                   <input
-                    id="city"
+                    id="checkout-city"
                     autoComplete="address-level2"
                     className={
                       inputClassName
                     }
-                    {...register("city")}
+                    {...register(
+                      "city",
+                    )}
                   />
 
                   <FieldErrorMessage
-                    error={errors.city}
+                    error={
+                      errors.city
+                    }
                   />
                 </div>
 
                 <div>
                   <label
-                    htmlFor="state"
+                    htmlFor="checkout-state"
                     className="text-sm font-medium"
                   >
                     State / Union Territory
                   </label>
 
                   <select
-                    id="state"
+                    id="checkout-state"
                     autoComplete="address-level1"
                     className={
                       inputClassName
                     }
-                    {...register("state")}
+                    {...register(
+                      "state",
+                    )}
                   >
                     <option value="">
                       Select state
@@ -580,30 +620,38 @@ export default function CheckoutForm() {
                     {indianStates.map(
                       (state) => (
                         <option
-                          key={state}
-                          value={state}
+                          key={
+                            state
+                          }
+                          value={
+                            state
+                          }
                         >
-                          {state}
+                          {
+                            state
+                          }
                         </option>
                       ),
                     )}
                   </select>
 
                   <FieldErrorMessage
-                    error={errors.state}
+                    error={
+                      errors.state
+                    }
                   />
                 </div>
 
                 <div>
                   <label
-                    htmlFor="postalCode"
+                    htmlFor="checkout-postal-code"
                     className="text-sm font-medium"
                   >
                     PIN code
                   </label>
 
                   <input
-                    id="postalCode"
+                    id="checkout-postal-code"
                     inputMode="numeric"
                     autoComplete="postal-code"
                     className={
@@ -624,8 +672,18 @@ export default function CheckoutForm() {
             </section>
 
             <ShippingMethodSelector
-              subtotal={subtotal}
-              register={register}
+              subtotal={
+                cart.subtotal
+              }
+              selectedMethod={
+                selectedShippingMethod
+              }
+              onMethodChange={
+                setSelectedShippingMethod
+              }
+              register={
+                register
+              }
               error={
                 errors.shippingMethod
               }
@@ -633,23 +691,25 @@ export default function CheckoutForm() {
 
             <section className="rounded-2xl border p-6">
               <label
-                htmlFor="orderNotes"
-                className="text-lg font-semibold"
+                htmlFor="checkout-notes"
+                className="text-xl font-semibold"
               >
                 Order Notes
               </label>
 
               <p className="mt-1 text-sm text-muted-foreground">
-                Optional delivery or product
-                instructions.
+                Optional delivery or
+                product instructions.
               </p>
 
               <textarea
-                id="orderNotes"
+                id="checkout-notes"
                 className={
                   textareaClassName
                 }
-                {...register("orderNotes")}
+                {...register(
+                  "orderNotes",
+                )}
               />
 
               <FieldErrorMessage
@@ -661,19 +721,30 @@ export default function CheckoutForm() {
           </div>
 
           <CheckoutOrderSummary
-            cartProducts={cartProducts}
-            subtotal={subtotal}
-            discountAmount={
-              discountAmount
+            items={
+              cart.items
             }
-            appliedPromotionCode={
-              promotionResult?.isValid
-                ? appliedPromotionCode
+            subtotal={
+              cart.subtotal
+            }
+            discountAmount={
+              cart.discountAmount
+            }
+            promotionCode={
+              cart.coupon
+                ?.isValid
+                ? cart.coupon.code
                 : null
             }
-            shippingCost={shippingCost}
-            total={total}
-            register={register}
+            shippingCost={
+              shippingMethod.cost
+            }
+            total={
+              total
+            }
+            register={
+              register
+            }
             acceptTermsError={
               errors.acceptTerms
             }

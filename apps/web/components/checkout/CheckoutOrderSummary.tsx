@@ -1,5 +1,3 @@
-import Link from "next/link";
-
 import {
   PackageCheck,
   Tag,
@@ -14,37 +12,43 @@ import ProductImage from "@/components/products/ProductImage";
 
 import {
   Button,
-  buttonVariants,
 } from "@/components/ui/button";
 
-import type { Product } from "@/types/product";
+import type {
+  ServerCartItem,
+} from "@/lib/api/types";
 
-import type { CheckoutFormValues } from "@/lib/checkout-schema";
-import { formatCurrency } from "@/lib/format-currency";
-import { cn } from "@/lib/utils";
+import type {
+  CheckoutFormValues,
+} from "@/lib/checkout-schema";
 
-type CheckoutCartProduct = {
-  product: Product;
-  quantity: number;
-};
+import {
+  formatCurrency,
+} from "@/lib/format-currency";
 
 type CheckoutOrderSummaryProps = {
-  cartProducts: CheckoutCartProduct[];
+  items: ServerCartItem[];
   subtotal: number;
   discountAmount: number;
-  appliedPromotionCode: string | null;
+  promotionCode:
+    | string
+    | null;
   shippingCost: number;
   total: number;
-  register: UseFormRegister<CheckoutFormValues>;
+
+  register:
+    UseFormRegister<CheckoutFormValues>;
+
   acceptTermsError?: FieldError;
+
   isSubmitting: boolean;
 };
 
 export default function CheckoutOrderSummary({
-  cartProducts,
+  items,
   subtotal,
   discountAmount,
-  appliedPromotionCode,
+  promotionCode,
   shippingCost,
   total,
   register,
@@ -58,19 +62,28 @@ export default function CheckoutOrderSummary({
       </h2>
 
       <div className="mt-6 space-y-5">
-        {cartProducts.map(
-          ({ product, quantity }) => {
+        {items.map(
+          (item) => {
+            const product =
+              item.product;
+
             const primaryImage =
+              product.images.find(
+                (image) =>
+                  image.isPrimary,
+              ) ??
               product.images[0];
 
             return (
               <div
-                key={product.id}
+                key={item.id}
                 className="grid grid-cols-[72px_1fr] gap-4"
               >
                 <div className="group overflow-hidden rounded-lg border bg-muted">
                   <ProductImage
-                    src={primaryImage?.url}
+                    src={
+                      primaryImage?.url
+                    }
                     alt={
                       primaryImage?.alt ??
                       product.name
@@ -80,17 +93,22 @@ export default function CheckoutOrderSummary({
 
                 <div className="min-w-0">
                   <p className="line-clamp-2 font-medium">
-                    {product.name}
+                    {
+                      product.name
+                    }
                   </p>
 
                   <p className="mt-1 text-sm text-muted-foreground">
-                    Quantity: {quantity}
+                    Quantity:{" "}
+                    {
+                      item.quantity
+                    }
                   </p>
 
                   <p className="mt-2 text-sm font-semibold">
                     {formatCurrency(
-                      product.price * quantity,
-                      product.currency,
+                      item.lineTotal,
+                      "INR",
                     )}
                   </p>
                 </div>
@@ -100,26 +118,11 @@ export default function CheckoutOrderSummary({
         )}
       </div>
 
-      {appliedPromotionCode &&
-        discountAmount > 0 && (
-          <div className="mt-6 flex items-center gap-3 rounded-xl border border-green-200 bg-green-50 p-4 text-green-800">
-            <Tag className="h-5 w-5 shrink-0" />
-
-            <div>
-              <p className="font-semibold">
-                {appliedPromotionCode}
-              </p>
-
-              <p className="text-sm">
-                Coupon discount applied
-              </p>
-            </div>
-          </div>
-        )}
-
       <div className="mt-6 space-y-4 border-t pt-6">
-        <div className="flex justify-between text-muted-foreground">
-          <span>Subtotal</span>
+        <div className="flex justify-between text-sm text-muted-foreground">
+          <span>
+            Subtotal
+          </span>
 
           <span>
             {formatCurrency(
@@ -129,9 +132,15 @@ export default function CheckoutOrderSummary({
           </span>
         </div>
 
-        {discountAmount > 0 && (
-          <div className="flex justify-between text-green-700">
-            <span>Coupon discount</span>
+        {discountAmount >
+          0 && (
+          <div className="flex justify-between text-sm text-green-700">
+            <span className="flex items-center gap-2">
+              <Tag className="h-4 w-4" />
+
+              {promotionCode ??
+                "Coupon"}
+            </span>
 
             <span>
               -
@@ -143,12 +152,15 @@ export default function CheckoutOrderSummary({
           </div>
         )}
 
-        <div className="flex justify-between text-muted-foreground">
-          <span>Shipping</span>
+        <div className="flex justify-between text-sm text-muted-foreground">
+          <span>
+            Shipping
+          </span>
 
           <span>
-            {shippingCost === 0
-              ? "Free"
+            {shippingCost ===
+            0
+              ? "FREE"
               : formatCurrency(
                   shippingCost,
                   "INR",
@@ -160,8 +172,30 @@ export default function CheckoutOrderSummary({
           <span>Total</span>
 
           <span>
-            {formatCurrency(total, "INR")}
+            {formatCurrency(
+              total,
+              "INR",
+            )}
           </span>
+        </div>
+      </div>
+
+      <div className="mt-6 rounded-xl bg-muted p-4">
+        <div className="flex gap-3">
+          <PackageCheck className="mt-0.5 h-5 w-5 shrink-0 text-green-700" />
+
+          <div>
+            <p className="font-medium">
+              Cash on Delivery
+            </p>
+
+            <p className="mt-1 text-xs leading-5 text-muted-foreground">
+              Online payments will
+              be connected in a
+              later payment
+              integration batch.
+            </p>
+          </div>
         </div>
       </div>
 
@@ -169,49 +203,45 @@ export default function CheckoutOrderSummary({
         <input
           type="checkbox"
           className="mt-1"
-          {...register("acceptTerms")}
+          {...register(
+            "acceptTerms",
+          )}
         />
 
         <span>
-          I agree to the terms, privacy
-          policy, and order conditions.
+          I agree to the HotLap
+          terms and conditions.
         </span>
       </label>
 
       {acceptTermsError?.message && (
         <p className="mt-2 text-sm text-red-600">
-          {acceptTermsError.message}
+          {
+            acceptTermsError.message
+          }
         </p>
       )}
 
       <Button
         type="submit"
         size="lg"
-        disabled={isSubmitting}
+        disabled={
+          isSubmitting ||
+          items.length === 0
+        }
         className="mt-6 w-full"
       >
-        <PackageCheck className="h-5 w-5" />
-
         {isSubmitting
           ? "Placing Order..."
-          : `Place Order • ${formatCurrency(
-              total,
-              "INR",
-            )}`}
+          : "Place Order"}
       </Button>
 
-      <Link
-        href="/cart"
-        className={cn(
-          buttonVariants({
-            variant: "outline",
-            size: "lg",
-          }),
-          "mt-3 w-full",
-        )}
-      >
-        Return to Cart
-      </Link>
+      <p className="mt-3 text-center text-xs text-muted-foreground">
+        Final totals and inventory
+        are verified securely by
+        HotLap before the order is
+        created.
+      </p>
     </aside>
   );
 }

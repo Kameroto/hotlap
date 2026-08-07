@@ -4,13 +4,17 @@ import jwt from "@fastify/jwt";
 import Fastify from "fastify";
 
 import { env } from "./config/env.js";
+
+import { accountRoutes } from "./routes/account.js";
 import { authRoutes } from "./routes/auth.js";
 import { cartRoutes } from "./routes/cart.js";
 import { categoryRoutes } from "./routes/categories.js";
 import { databaseRoutes } from "./routes/database.js";
 import { healthRoutes } from "./routes/health.js";
+import { orderRoutes } from "./routes/orders.js";
 import { productRoutes } from "./routes/products.js";
 import { wishlistRoutes } from "./routes/wishlist.js";
+
 import { ApiError } from "./utils/api-error.js";
 
 type ErrorResponse = {
@@ -34,10 +38,17 @@ function normalizeError(
 ): NormalizedError {
   if (error instanceof ApiError) {
     return {
-      statusCode: error.statusCode,
-      error: error.name,
-      code: error.code,
-      message: error.message,
+      statusCode:
+        error.statusCode,
+
+      error:
+        error.name,
+
+      code:
+        error.code,
+
+      message:
+        error.message,
 
       ...(error.details !== undefined
         ? {
@@ -96,22 +107,27 @@ export async function buildApp() {
   const logger =
     env.NODE_ENV === "development"
       ? {
-          level: env.LOG_LEVEL,
+          level:
+            env.LOG_LEVEL,
 
           transport: {
-            target: "pino-pretty",
+            target:
+              "pino-pretty",
 
             options: {
               colorize: true,
+
               translateTime:
                 "SYS:standard",
+
               ignore:
                 "pid,hostname",
             },
           },
         }
       : {
-          level: env.LOG_LEVEL,
+          level:
+            env.LOG_LEVEL,
         };
 
   const app = Fastify({
@@ -120,8 +136,11 @@ export async function buildApp() {
   });
 
   await app.register(cors, {
-    origin: env.WEB_ORIGIN,
-    credentials: true,
+    origin:
+      env.WEB_ORIGIN,
+
+    credentials:
+      true,
 
     methods: [
       "GET",
@@ -152,8 +171,11 @@ export async function buildApp() {
   });
 
   app.get("/", async () => ({
-    service: "HotLap API",
-    version: "0.5.0",
+    service:
+      "HotLap API",
+
+    version:
+      "0.7.0",
 
     endpoints: {
       health:
@@ -164,6 +186,12 @@ export async function buildApp() {
 
       authentication:
         "/api/v1/auth",
+
+      account:
+        "/api/v1/account",
+
+      orders:
+        "/api/v1/orders",
 
       categories:
         "/api/v1/categories",
@@ -182,41 +210,93 @@ export async function buildApp() {
     },
   }));
 
-  await app.register(healthRoutes, {
-    prefix: "/api/v1",
-  });
+  await app.register(
+    healthRoutes,
+    {
+      prefix:
+        "/api/v1",
+    },
+  );
 
-  await app.register(databaseRoutes, {
-    prefix: "/api/v1",
-  });
+  await app.register(
+    databaseRoutes,
+    {
+      prefix:
+        "/api/v1",
+    },
+  );
 
-  await app.register(authRoutes, {
-    prefix: "/api/v1/auth",
-  });
+  await app.register(
+    authRoutes,
+    {
+      prefix:
+        "/api/v1/auth",
+    },
+  );
 
-  await app.register(categoryRoutes, {
-    prefix: "/api/v1",
-  });
+  await app.register(
+    accountRoutes,
+    {
+      prefix:
+        "/api/v1/account",
+    },
+  );
 
-  await app.register(productRoutes, {
-    prefix: "/api/v1",
-  });
+  await app.register(
+    categoryRoutes,
+    {
+      prefix:
+        "/api/v1",
+    },
+  );
 
-  await app.register(cartRoutes, {
-    prefix: "/api/v1",
-  });
+  await app.register(
+    productRoutes,
+    {
+      prefix:
+        "/api/v1",
+    },
+  );
 
-  await app.register(wishlistRoutes, {
-    prefix: "/api/v1",
-  });
+  await app.register(
+    cartRoutes,
+    {
+      prefix:
+        "/api/v1",
+    },
+  );
+
+  await app.register(
+    wishlistRoutes,
+    {
+      prefix:
+        "/api/v1",
+    },
+  );
+
+  await app.register(
+    orderRoutes,
+    {
+      prefix:
+        "/api/v1",
+    },
+  );
 
   app.setNotFoundHandler(
-    async (request, reply) => {
+    async (
+      request,
+      reply,
+    ) => {
       const response: ErrorResponse = {
         statusCode: 404,
-        error: "Not Found",
-        code: "ROUTE_NOT_FOUND",
-        message: `Route ${request.method} ${request.url} was not found.`,
+        error:
+          "Not Found",
+
+        code:
+          "ROUTE_NOT_FOUND",
+
+        message:
+          `Route ${request.method} ${request.url} was not found.`,
       };
 
       return reply

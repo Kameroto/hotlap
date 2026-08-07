@@ -1,3 +1,10 @@
+import type {
+  FeaturedProductsResponse,
+  Product,
+  ProductDetailsResponse,
+  ProductListResponse,
+} from "@/types/product";
+
 export type UserRole =
   | "CUSTOMER"
   | "ADMIN"
@@ -13,6 +20,11 @@ export type PublicUser = {
   emailVerifiedAt: string | null;
   createdAt: string;
 };
+
+export type AccountProfile =
+  PublicUser & {
+    updatedAt: string;
+  };
 
 export type AuthenticationResponse = {
   accessToken: string;
@@ -36,6 +48,54 @@ export type RegisterRequest = {
   password: string;
 };
 
+export type UpdateProfileRequest = {
+  firstName: string;
+  lastName: string;
+  phone: string | null;
+};
+
+export type Address = {
+  id: string;
+  label: string | null;
+  recipientName: string;
+  phone: string;
+  addressLine1: string;
+  addressLine2: string | null;
+  city: string;
+  state: string;
+  postalCode: string;
+  country: string;
+  isDefault: boolean;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type AddressRequest = {
+  label?: string | null;
+  recipientName: string;
+  phone: string;
+  addressLine1: string;
+  addressLine2?: string | null;
+  city: string;
+  state: string;
+  postalCode: string;
+  country: string;
+  isDefault: boolean;
+};
+
+export type AddressesResponse = {
+  addresses: Address[];
+  totalAddresses: number;
+};
+
+export type AddressResponse = {
+  address: Address;
+};
+
+export type MessageResponse = {
+  message: string;
+};
+
 export type ApiErrorResponse = {
   statusCode: number;
   error: string;
@@ -46,4 +106,65 @@ export type ApiErrorResponse = {
 
 export type LogoutResponse = {
   message: string;
+};
+
+export type CartCoupon = {
+  code: string;
+  name: string;
+  description: string | null;
+  isValid: boolean;
+  discountAmount: number;
+  message: string;
+};
+
+export type ServerCartItem = {
+  id: string;
+  quantity: number;
+  lineTotal: number;
+  product: Product;
+};
+
+export type ServerCart = {
+  id: string;
+  items: ServerCartItem[];
+  totalQuantity: number;
+  subtotal: number;
+  discountAmount: number;
+  totalBeforeShipping: number;
+  coupon: CartCoupon | null;
+  updatedAt: string;
+};
+
+export type AddCartItemRequest = {
+  productId: string;
+  quantity: number;
+};
+
+export type UpdateCartItemRequest = {
+  quantity: number;
+};
+
+export type ApplyCartCouponRequest = {
+  code: string;
+};
+
+export type WishlistItem = {
+  id: string;
+  addedAt: string;
+  product: Product;
+};
+
+export type WishlistResponse = {
+  items: WishlistItem[];
+  totalItems: number;
+};
+
+export type AddWishlistItemRequest = {
+  productId: string;
+};
+
+export type {
+  ProductListResponse,
+  FeaturedProductsResponse,
+  ProductDetailsResponse,
 };

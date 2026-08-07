@@ -2,14 +2,29 @@
 
 import {
   Download,
+  LoaderCircle,
   RefreshCw,
 } from "lucide-react";
-import { toast } from "sonner";
 
-import { Button } from "@/components/ui/button";
-import { products } from "@/data/products";
-import { useCartStore } from "@/store/cart-store";
-import type { OrderItem } from "@/types/order";
+import {
+  toast,
+} from "sonner";
+
+import {
+  Button,
+} from "@/components/ui/button";
+
+import {
+  ApiClientError,
+} from "@/lib/api/client";
+
+import {
+  useCartStore,
+} from "@/store/cart-store";
+
+import type {
+  OrderItem,
+} from "@/types/order";
 
 type OrderActionsProps = {
   orderId: string;
@@ -20,73 +35,88 @@ export default function OrderActions({
   orderId,
   items,
 }: OrderActionsProps) {
-  const addItem = useCartStore(
-    (state) => state.addItem,
-  );
+  const addItem =
+    useCartStore(
+      (state) =>
+        state.addItem,
+    );
 
-  const hasHydrated = useCartStore(
-    (state) => state.hasHydrated,
-  );
+  const hasHydrated =
+    useCartStore(
+      (state) =>
+        state.hasHydrated,
+    );
 
-  function reorderItems() {
+  const isLoading =
+    useCartStore(
+      (state) =>
+        state.isLoading,
+    );
+
+  async function reorderItems() {
     let addedQuantity = 0;
 
-    items.forEach((orderItem) => {
-      const product = products.find(
-        (candidateProduct) =>
-          candidateProduct.id ===
-          orderItem.productId,
-      );
+    try {
+      for (
+        const item of
+        items
+      ) {
+        if (
+          !item.productId
+        ) {
+          continue;
+        }
 
-      if (!product) {
+        await addItem(
+          item.productId,
+          item.quantity,
+        );
+
+        addedQuantity +=
+          item.quantity;
+      }
+
+      if (
+        addedQuantity === 0
+      ) {
+        toast.error(
+          "The products in this order are currently unavailable.",
+        );
+
         return;
       }
 
-      const quantityToAdd = Math.min(
-        orderItem.quantity,
-        product.stockQuantity,
-      );
+      toast.success(
+        `${addedQuantity} ${
+          addedQuantity === 1
+            ? "item"
+            : "items"
+        } added to your cart.`,
+        {
+          action: {
+            label:
+              "View Cart",
 
-      for (
-        let quantityIndex = 0;
-        quantityIndex < quantityToAdd;
-        quantityIndex += 1
-      ) {
-        addItem(
-          product.id,
-          product.stockQuantity,
-        );
-
-        addedQuantity += 1;
-      }
-    });
-
-    if (addedQuantity === 0) {
-      toast.error(
-        "The products in this order are currently unavailable.",
-      );
-
-      return;
-    }
-
-    toast.success(
-      `${addedQuantity} ${
-        addedQuantity === 1 ? "item" : "items"
-      } added to your cart.`,
-      {
-        action: {
-          label: "View Cart",
-          onClick: () => {
-            window.location.href = "/cart";
+            onClick: () => {
+              window.location.href =
+                "/cart";
+            },
           },
         },
-      },
-    );
+      );
+    } catch (error) {
+      toast.error(
+        error instanceof
+        ApiClientError
+          ? error.message
+          : "Unable to reorder these products.",
+      );
+    }
   }
 
   function handleInvoiceDownload() {
     toast.info(
-      `Invoice generation for ${orderId} will be connected to the backend.`,
+      `Invoice generation for ${orderId} is planned after the MVP.`,
     );
   }
 
@@ -94,17 +124,29 @@ export default function OrderActions({
     <div className="flex flex-col gap-3 sm:flex-row">
       <Button
         type="button"
-        onClick={reorderItems}
-        disabled={!hasHydrated}
+        disabled={
+          !hasHydrated ||
+          isLoading
+        }
+        onClick={() => {
+          void reorderItems();
+        }}
       >
-        <RefreshCw className="h-4 w-4" />
+        {isLoading ? (
+          <LoaderCircle className="h-4 w-4 animate-spin" />
+        ) : (
+          <RefreshCw className="h-4 w-4" />
+        )}
+
         Reorder Items
       </Button>
 
       <Button
         type="button"
         variant="outline"
-        onClick={handleInvoiceDownload}
+        onClick={
+          handleInvoiceDownload
+        }
       >
         <Download className="h-4 w-4" />
         Download Invoice

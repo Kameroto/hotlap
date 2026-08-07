@@ -1,24 +1,47 @@
-import { products } from "@/data/products";
-import type { Product, ProductCategory } from "@/types/product";
+import {
+  ApiClientError,
+  getFeaturedProducts,
+  getProductBySlug,
+  getProducts,
+  type ProductListQuery,
+} from "@/lib/api/client";
 
-export function getAllProducts(): Product[] {
-  return products;
+import type {
+  Product,
+  ProductListResponse,
+} from "@/types/product";
+
+export async function getAllProducts(
+  query: ProductListQuery = {},
+): Promise<ProductListResponse> {
+  return getProducts(query);
 }
 
-export function getFeaturedProducts(): Product[] {
-  return products.filter((product) => product.featured);
+export async function getFeaturedProductList(
+  limit = 6,
+): Promise<Product[]> {
+  const response =
+    await getFeaturedProducts(limit);
+
+  return response.products;
 }
 
-export function getProductBySlug(slug: string): Product | undefined {
-  return products.find((product) => product.slug === slug);
-}
+export async function findProductBySlug(
+  slug: string,
+): Promise<Product | null> {
+  try {
+    const response =
+      await getProductBySlug(slug);
 
-export function getProductsByCategory(
-  category: ProductCategory,
-): Product[] {
-  return products.filter((product) => product.category === category);
-}
+    return response.product;
+  } catch (error) {
+    if (
+      error instanceof ApiClientError &&
+      error.statusCode === 404
+    ) {
+      return null;
+    }
 
-export function getInStockProducts(): Product[] {
-  return products.filter((product) => product.stockQuantity > 0);
+    throw error;
+  }
 }

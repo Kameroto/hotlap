@@ -2,19 +2,35 @@
 
 import {
   Check,
+  LoaderCircle,
   ShoppingCart,
 } from "lucide-react";
-import { toast } from "sonner";
 
-import { Button } from "@/components/ui/button";
-import { useCartStore } from "@/store/cart-store";
+import {
+  toast,
+} from "sonner";
+
+import {
+  Button,
+} from "@/components/ui/button";
+
+import {
+  ApiClientError,
+} from "@/lib/api/client";
+
+import {
+  useCartStore,
+} from "@/store/cart-store";
 
 type AddToCartButtonProps = {
   productId: string;
   productName: string;
   stockQuantity: number;
   className?: string;
-  size?: "default" | "sm" | "lg";
+  size?:
+    | "default"
+    | "sm"
+    | "lg";
 };
 
 export default function AddToCartButton({
@@ -24,34 +40,52 @@ export default function AddToCartButton({
   className,
   size = "default",
 }: AddToCartButtonProps) {
-  const items = useCartStore(
-    (state) => state.items,
-  );
+  const cart =
+    useCartStore(
+      (state) =>
+        state.cart,
+    );
 
-  const hasHydrated = useCartStore(
-    (state) => state.hasHydrated,
-  );
+  const hasHydrated =
+    useCartStore(
+      (state) =>
+        state.hasHydrated,
+    );
 
-  const addItem = useCartStore(
-    (state) => state.addItem,
-  );
+  const isLoading =
+    useCartStore(
+      (state) =>
+        state.isLoading,
+    );
 
-  const cartItem = items.find(
-    (item) => item.productId === productId,
-  );
+  const addItem =
+    useCartStore(
+      (state) =>
+        state.addItem,
+    );
+
+  const cartItem =
+    cart?.items.find(
+      (item) =>
+        item.product.id ===
+        productId,
+    );
 
   const isOutOfStock =
     stockQuantity <= 0;
 
   const hasReachedStockLimit =
     cartItem !== undefined &&
-    cartItem.quantity >= stockQuantity;
+    cartItem.quantity >=
+      stockQuantity;
 
   const isInCart =
-    hasHydrated && cartItem !== undefined;
+    Boolean(cartItem);
 
-  function handleAddToCart() {
-    if (isOutOfStock) {
+  async function handleAddToCart() {
+    if (
+      isOutOfStock
+    ) {
       toast.error(
         `${productName} is currently unavailable.`,
       );
@@ -59,7 +93,9 @@ export default function AddToCartButton({
       return;
     }
 
-    if (hasReachedStockLimit) {
+    if (
+      hasReachedStockLimit
+    ) {
       toast.warning(
         `Only ${stockQuantity} units of ${productName} are available.`,
       );
@@ -67,22 +103,37 @@ export default function AddToCartButton({
       return;
     }
 
-    addItem(
-      productId,
-      stockQuantity,
-    );
+    try {
+      await addItem(
+        productId,
+        1,
+      );
 
-    toast.success(
-      `${productName} added to your cart.`,
-      {
-        action: {
-          label: "View Cart",
-          onClick: () => {
-            window.location.href = "/cart";
+      toast.success(
+        `${productName} added to your cart.`,
+        {
+          action: {
+            label:
+              "View Cart",
+
+            onClick: () => {
+              window.location.href =
+                "/cart";
+            },
           },
         },
-      },
-    );
+      );
+    } catch (error) {
+      const message =
+        error instanceof
+        ApiClientError
+          ? error.message
+          : "Unable to add this product to your cart.";
+
+      toast.error(
+        message,
+      );
+    }
   }
 
   return (
@@ -91,14 +142,21 @@ export default function AddToCartButton({
       size={size}
       disabled={
         !hasHydrated ||
+        isLoading ||
         isOutOfStock ||
         hasReachedStockLimit
       }
-      onClick={handleAddToCart}
+      onClick={() => {
+        void handleAddToCart();
+      }}
       aria-label={`Add ${productName} to cart`}
-      className={className}
+      className={
+        className
+      }
     >
-      {isInCart ? (
+      {isLoading ? (
+        <LoaderCircle className="h-4 w-4 animate-spin" />
+      ) : isInCart ? (
         <Check className="h-4 w-4" />
       ) : (
         <ShoppingCart className="h-4 w-4" />
@@ -108,9 +166,11 @@ export default function AddToCartButton({
         ? "Unavailable"
         : hasReachedStockLimit
           ? "Stock Limit Reached"
-          : isInCart
-            ? `In Cart (${cartItem.quantity})`
-            : "Add to Cart"}
+          : isLoading
+            ? "Updating..."
+            : isInCart
+              ? `In Cart (${cartItem?.quantity ?? 0})`
+              : "Add to Cart"}
     </Button>
   );
 }

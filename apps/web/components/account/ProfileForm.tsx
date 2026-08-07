@@ -1,6 +1,9 @@
 "use client";
 
-import { useState } from "react";
+import {
+  useEffect,
+  useState,
+} from "react";
 
 import {
   CheckCircle2,
@@ -13,23 +16,39 @@ import {
 } from "react-hook-form";
 
 import { zodResolver } from "@hookform/resolvers/zod";
+import { toast } from "sonner";
 import { z } from "zod";
 
 import { Button } from "@/components/ui/button";
+
+import {
+  ApiClientError,
+} from "@/lib/api/client";
+
+import {
+  useAuthStore,
+} from "@/store/auth-store";
 
 const profileSchema = z.object({
   firstName: z
     .string()
     .trim()
-    .min(2, "Enter at least 2 characters."),
+    .min(
+      2,
+      "First name must contain at least 2 characters.",
+    ),
 
   lastName: z
     .string()
     .trim()
-    .min(2, "Enter at least 2 characters."),
+    .min(
+      2,
+      "Last name must contain at least 2 characters.",
+    ),
 
-  email: z
-    .email("Enter a valid email address."),
+  email: z.email(
+    "Enter a valid email address.",
+  ),
 
   phone: z
     .string()
@@ -66,52 +85,134 @@ const inputClassName =
   "mt-2 h-11 w-full rounded-lg border bg-background px-3 text-sm outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/20";
 
 export default function ProfileForm() {
-  const [saved, setSaved] = useState(false);
+  const user = useAuthStore(
+    (state) => state.user,
+  );
+
+  const updateProfile = useAuthStore(
+    (state) => state.updateProfile,
+  );
+
+  const [
+    savedSuccessfully,
+    setSavedSuccessfully,
+  ] = useState(false);
 
   const {
     register,
+    reset,
     handleSubmit,
+
     formState: {
       errors,
       isSubmitting,
-      isDirty,
     },
   } = useForm<ProfileFormValues>({
-    resolver: zodResolver(profileSchema),
+    resolver: zodResolver(
+      profileSchema,
+    ),
 
     defaultValues: {
-      firstName: "Tanmay",
-      lastName: "Saini",
-      email: "sainitanmay@gmail.com",
-      phone: "9876543210",
+      firstName: "",
+      lastName: "",
+      email: "",
+      phone: "",
     },
   });
 
+  useEffect(() => {
+    if (!user) {
+      return;
+    }
+
+    reset({
+      firstName:
+        user.firstName,
+
+      lastName:
+        user.lastName,
+
+      email:
+        user.email,
+
+      phone:
+        user.phone ?? "",
+    });
+  }, [
+    reset,
+    user,
+  ]);
+
   async function saveProfile(
     values: ProfileFormValues,
-  ) {
-    await new Promise((resolve) => {
-      window.setTimeout(resolve, 500);
-    });
+  ): Promise<void> {
+    setSavedSuccessfully(false);
 
-    console.info(
-      "Temporary profile update",
-      values,
+    try {
+      const updatedUser =
+        await updateProfile({
+          firstName:
+            values.firstName,
+
+          lastName:
+            values.lastName,
+
+          phone:
+            values.phone,
+        });
+
+      reset({
+        firstName:
+          updatedUser.firstName,
+
+        lastName:
+          updatedUser.lastName,
+
+        email:
+          updatedUser.email,
+
+        phone:
+          updatedUser.phone ?? "",
+      });
+
+      setSavedSuccessfully(true);
+
+      toast.success(
+        "Your profile has been updated.",
+      );
+    } catch (error) {
+      const message =
+        error instanceof ApiClientError
+          ? error.message
+          : "Unable to update your profile.";
+
+      toast.error(message);
+    }
+  }
+
+  if (!user) {
+    return (
+      <div className="rounded-2xl border bg-card p-8 text-center text-muted-foreground">
+        Loading your profile...
+      </div>
     );
-
-    setSaved(true);
   }
 
   return (
     <form
-      onSubmit={handleSubmit(saveProfile)}
+      onSubmit={handleSubmit(
+        saveProfile,
+      )}
       noValidate
       className="rounded-2xl border bg-card p-6"
     >
-      {saved && (
+      {savedSuccessfully && (
         <div className="mb-6 flex items-center gap-3 rounded-xl border border-green-200 bg-green-50 p-4 text-green-800">
-          <CheckCircle2 className="h-5 w-5" />
-          Profile changes saved locally for demonstration.
+          <CheckCircle2 className="h-5 w-5 shrink-0" />
+
+          <span>
+            Your profile changes were saved successfully.
+          </span>
         </div>
       )}
 
@@ -127,12 +228,18 @@ export default function ProfileForm() {
           <input
             id="profile-first-name"
             autoComplete="given-name"
-            className={inputClassName}
-            {...register("firstName")}
+            className={
+              inputClassName
+            }
+            {...register(
+              "firstName",
+            )}
           />
 
           <FieldErrorMessage
-            error={errors.firstName}
+            error={
+              errors.firstName
+            }
           />
         </div>
 
@@ -147,12 +254,18 @@ export default function ProfileForm() {
           <input
             id="profile-last-name"
             autoComplete="family-name"
-            className={inputClassName}
-            {...register("lastName")}
+            className={
+              inputClassName
+            }
+            {...register(
+              "lastName",
+            )}
           />
 
           <FieldErrorMessage
-            error={errors.lastName}
+            error={
+              errors.lastName
+            }
           />
         </div>
 
@@ -168,9 +281,14 @@ export default function ProfileForm() {
             id="profile-email"
             type="email"
             autoComplete="email"
-            className={inputClassName}
+            readOnly
+            className={`${inputClassName} cursor-not-allowed bg-muted text-muted-foreground`}
             {...register("email")}
           />
+
+          <p className="mt-1 text-xs text-muted-foreground">
+            Email changes are not currently supported.
+          </p>
 
           <FieldErrorMessage
             error={errors.email}
@@ -190,7 +308,9 @@ export default function ProfileForm() {
             type="tel"
             inputMode="numeric"
             autoComplete="tel"
-            className={inputClassName}
+            className={
+              inputClassName
+            }
             {...register("phone")}
           />
 
@@ -204,7 +324,7 @@ export default function ProfileForm() {
         <Button
           type="submit"
           size="lg"
-          disabled={isSubmitting || !isDirty}
+          disabled={isSubmitting}
         >
           <Save className="h-5 w-5" />
 

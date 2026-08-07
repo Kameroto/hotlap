@@ -1,8 +1,12 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
-import { useState } from "react";
+import {
+  usePathname,
+} from "next/navigation";
+import {
+  useState,
+} from "react";
 
 import {
   Heart,
@@ -13,10 +17,22 @@ import {
 } from "lucide-react";
 
 import Container from "@/components/layout/Container";
-import { buttonVariants } from "@/components/ui/button";
-import { cn } from "@/lib/utils";
-import { useCartStore } from "@/store/cart-store";
-import { useWishlistStore } from "@/store/wishlist-store";
+
+import {
+  buttonVariants,
+} from "@/components/ui/button";
+
+import {
+  cn,
+} from "@/lib/utils";
+
+import {
+  useCartStore,
+} from "@/store/cart-store";
+
+import {
+  useWishlistStore,
+} from "@/store/wishlist-store";
 
 const navigationLinks = [
   {
@@ -42,38 +58,54 @@ const navigationLinks = [
 ];
 
 export default function Navbar() {
-  const pathname = usePathname();
+  const pathname =
+    usePathname();
 
-  const [mobileMenuIsOpen, setMobileMenuIsOpen] =
-    useState(false);
+  const [
+    mobileMenuIsOpen,
+    setMobileMenuIsOpen,
+  ] = useState(false);
 
-  const wishlistCount = useWishlistStore(
-    (state) => state.wishlistProductIds.length,
-  );
+  const wishlistItems =
+    useWishlistStore(
+      (state) =>
+        state.items,
+    );
 
-  const wishlistHasHydrated = useWishlistStore(
-    (state) => state.hasHydrated,
-  );
+  const wishlistHasHydrated =
+    useWishlistStore(
+      (state) =>
+        state.hasHydrated,
+    );
 
-  const cartItems = useCartStore(
-    (state) => state.items,
-  );
+  const cart =
+    useCartStore(
+      (state) =>
+        state.cart,
+    );
 
-  const cartHasHydrated = useCartStore(
-    (state) => state.hasHydrated,
-  );
+  const cartHasHydrated =
+    useCartStore(
+      (state) =>
+        state.hasHydrated,
+    );
 
-  const cartQuantity = cartItems.reduce(
-    (totalQuantity, item) =>
-      totalQuantity + item.quantity,
-    0,
-  );
+  const wishlistCount =
+    wishlistItems.length;
+
+  const cartQuantity =
+    cart?.totalQuantity ??
+    0;
 
   const visibleWishlistCount =
-    wishlistHasHydrated ? wishlistCount : 0;
+    wishlistHasHydrated
+      ? wishlistCount
+      : 0;
 
   const visibleCartQuantity =
-    cartHasHydrated ? cartQuantity : 0;
+    cartHasHydrated
+      ? cartQuantity
+      : 0;
 
   function isNavigationLinkActive(
     href: string,
@@ -82,11 +114,15 @@ export default function Navbar() {
       return pathname === "/";
     }
 
-    return pathname.startsWith(href);
+    return pathname.startsWith(
+      href,
+    );
   }
 
   function closeMobileMenu() {
-    setMobileMenuIsOpen(false);
+    setMobileMenuIsOpen(
+      false,
+    );
   }
 
   return (
@@ -98,35 +134,49 @@ export default function Navbar() {
         >
           <Link
             href="/"
-            onClick={closeMobileMenu}
+            onClick={
+              closeMobileMenu
+            }
             className="text-2xl font-bold tracking-wide text-red-600"
           >
             HotLap
           </Link>
 
           <div className="hidden items-center gap-8 md:flex">
-            {navigationLinks.map((link) => {
-              const isActive =
-                isNavigationLinkActive(link.href);
+            {navigationLinks.map(
+              (link) => {
+                const isActive =
+                  isNavigationLinkActive(
+                    link.href,
+                  );
 
-              return (
-                <Link
-                  key={link.href}
-                  href={link.href}
-                  aria-current={
-                    isActive ? "page" : undefined
-                  }
-                  className={cn(
-                    "text-sm font-medium transition",
-                    isActive
-                      ? "text-foreground"
-                      : "text-muted-foreground hover:text-foreground",
-                  )}
-                >
-                  {link.label}
-                </Link>
-              );
-            })}
+                return (
+                  <Link
+                    key={
+                      link.href
+                    }
+                    href={
+                      link.href
+                    }
+                    aria-current={
+                      isActive
+                        ? "page"
+                        : undefined
+                    }
+                    className={cn(
+                      "text-sm font-medium transition",
+                      isActive
+                        ? "text-foreground"
+                        : "text-muted-foreground hover:text-foreground",
+                    )}
+                  >
+                    {
+                      link.label
+                    }
+                  </Link>
+                );
+              },
+            )}
           </div>
 
           <div className="flex items-center gap-1">
@@ -135,8 +185,10 @@ export default function Navbar() {
               aria-label="Customer account"
               className={cn(
                 buttonVariants({
-                  variant: "ghost",
-                  size: "icon",
+                  variant:
+                    "ghost",
+                  size:
+                    "icon",
                 }),
                 "hidden sm:inline-flex",
               )}
@@ -149,8 +201,10 @@ export default function Navbar() {
               aria-label={`Wishlist with ${visibleWishlistCount} products`}
               className={cn(
                 buttonVariants({
-                  variant: "ghost",
-                  size: "icon",
+                  variant:
+                    "ghost",
+                  size:
+                    "icon",
                 }),
                 "relative",
               )}
@@ -158,9 +212,11 @@ export default function Navbar() {
               <Heart className="h-5 w-5" />
 
               {wishlistHasHydrated &&
-                wishlistCount > 0 && (
+                wishlistCount >
+                  0 && (
                   <span className="absolute -top-1 -right-1 flex h-5 min-w-5 items-center justify-center rounded-full bg-red-600 px-1 text-xs font-bold text-white">
-                    {wishlistCount > 99
+                    {wishlistCount >
+                    99
                       ? "99+"
                       : wishlistCount}
                   </span>
@@ -172,8 +228,10 @@ export default function Navbar() {
               aria-label={`Cart with ${visibleCartQuantity} items`}
               className={cn(
                 buttonVariants({
-                  variant: "ghost",
-                  size: "icon",
+                  variant:
+                    "ghost",
+                  size:
+                    "icon",
                 }),
                 "relative",
               )}
@@ -181,9 +239,11 @@ export default function Navbar() {
               <ShoppingCart className="h-5 w-5" />
 
               {cartHasHydrated &&
-                cartQuantity > 0 && (
+                cartQuantity >
+                  0 && (
                   <span className="absolute -top-1 -right-1 flex h-5 min-w-5 items-center justify-center rounded-full bg-red-600 px-1 text-xs font-bold text-white">
-                    {cartQuantity > 99
+                    {cartQuantity >
+                    99
                       ? "99+"
                       : cartQuantity}
                   </span>
@@ -197,17 +257,24 @@ export default function Navbar() {
                   ? "Close navigation menu"
                   : "Open navigation menu"
               }
-              aria-expanded={mobileMenuIsOpen}
+              aria-expanded={
+                mobileMenuIsOpen
+              }
               aria-controls="mobile-navigation"
               onClick={() =>
                 setMobileMenuIsOpen(
-                  (currentValue) => !currentValue,
+                  (
+                    currentValue,
+                  ) =>
+                    !currentValue,
                 )
               }
               className={cn(
                 buttonVariants({
-                  variant: "ghost",
-                  size: "icon",
+                  variant:
+                    "ghost",
+                  size:
+                    "icon",
                 }),
                 "md:hidden",
               )}
@@ -230,41 +297,60 @@ export default function Navbar() {
               className="flex flex-col gap-1"
               aria-label="Mobile navigation"
             >
-              {navigationLinks.map((link) => {
-                const isActive =
-                  isNavigationLinkActive(link.href);
+              {navigationLinks.map(
+                (link) => {
+                  const isActive =
+                    isNavigationLinkActive(
+                      link.href,
+                    );
 
-                return (
-                  <Link
-                    key={link.href}
-                    href={link.href}
-                    onClick={closeMobileMenu}
-                    aria-current={
-                      isActive ? "page" : undefined
-                    }
-                    className={cn(
-                      "rounded-xl px-4 py-3 text-sm font-medium transition",
-                      isActive
-                        ? "bg-primary text-primary-foreground"
-                        : "text-muted-foreground hover:bg-muted hover:text-foreground",
-                    )}
-                  >
-                    {link.label}
-                  </Link>
-                );
-              })}
+                  return (
+                    <Link
+                      key={
+                        link.href
+                      }
+                      href={
+                        link.href
+                      }
+                      onClick={
+                        closeMobileMenu
+                      }
+                      aria-current={
+                        isActive
+                          ? "page"
+                          : undefined
+                      }
+                      className={cn(
+                        "rounded-xl px-4 py-3 text-sm font-medium transition",
+                        isActive
+                          ? "bg-primary text-primary-foreground"
+                          : "text-muted-foreground hover:bg-muted hover:text-foreground",
+                      )}
+                    >
+                      {
+                        link.label
+                      }
+                    </Link>
+                  );
+                },
+              )}
 
               <Link
                 href="/account"
-                onClick={closeMobileMenu}
+                onClick={
+                  closeMobileMenu
+                }
                 className={cn(
                   "mt-2 flex items-center gap-3 rounded-xl border px-4 py-3 text-sm font-medium",
-                  pathname.startsWith("/account")
+                  pathname.startsWith(
+                    "/account",
+                  )
                     ? "bg-primary text-primary-foreground"
                     : "text-muted-foreground hover:bg-muted hover:text-foreground",
                 )}
               >
                 <UserRound className="h-4 w-4" />
+
                 Customer Account
               </Link>
             </nav>

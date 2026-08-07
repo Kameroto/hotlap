@@ -3,17 +3,20 @@
 import Link from "next/link";
 
 import {
+  LoaderCircle,
   Minus,
   Plus,
   ShoppingCart,
   Trash2,
 } from "lucide-react";
 
-import PromoCodeForm from "@/components/cart/PromoCodeForm";
+import {
+  toast,
+} from "sonner";
 
+import PromoCodeForm from "@/components/cart/PromoCodeForm";
 import Container from "@/components/layout/Container";
 import Section from "@/components/layout/Section";
-
 import ProductImage from "@/components/products/ProductImage";
 
 import {
@@ -21,34 +24,40 @@ import {
   buttonVariants,
 } from "@/components/ui/button";
 
-import { products } from "@/data/products";
+import {
+  ApiClientError,
+} from "@/lib/api/client";
 
 import {
   formatCurrency,
 } from "@/lib/format-currency";
 
 import {
-  validatePromotion,
-} from "@/lib/promotions";
+  cn,
+} from "@/lib/utils";
 
-import { cn } from "@/lib/utils";
-
-import { useCartStore } from "@/store/cart-store";
+import {
+  useCartStore,
+} from "@/store/cart-store";
 
 export default function CartPage() {
-  const items = useCartStore(
-    (state) => state.items,
-  );
-
-  const appliedPromotionCode =
+  const cart =
     useCartStore(
       (state) =>
-        state.appliedPromotionCode,
+        state.cart,
     );
 
-  const hasHydrated = useCartStore(
-    (state) => state.hasHydrated,
-  );
+  const hasHydrated =
+    useCartStore(
+      (state) =>
+        state.hasHydrated,
+    );
+
+  const isLoading =
+    useCartStore(
+      (state) =>
+        state.isLoading,
+    );
 
   const increaseQuantity =
     useCartStore(
@@ -62,80 +71,53 @@ export default function CartPage() {
         state.decreaseQuantity,
     );
 
-  const removeItem = useCartStore(
-    (state) => state.removeItem,
-  );
-
-  const clearCart = useCartStore(
-    (state) => state.clearCart,
-  );
-
-  const cartProducts =
-    items.flatMap(
-      (cartItem) => {
-        const product =
-          products.find(
-            (candidateProduct) =>
-              candidateProduct.id ===
-              cartItem.productId,
-          );
-
-        if (!product) {
-          return [];
-        }
-
-        return [
-          {
-            product,
-            quantity:
-              cartItem.quantity,
-          },
-        ];
-      },
+  const removeItem =
+    useCartStore(
+      (state) =>
+        state.removeItem,
     );
 
-  const totalQuantity =
-    cartProducts.reduce(
-      (
-        total,
-        cartProduct,
-      ) =>
-        total +
-        cartProduct.quantity,
-      0,
+  async function runCartAction(
+    action:
+      () => Promise<void>,
+    fallbackMessage: string,
+  ) {
+    try {
+      await action();
+    } catch (error) {
+      toast.error(
+        error instanceof
+        ApiClientError
+          ? error.message
+          : fallbackMessage,
+      );
+    }
+  }
+
+  async function clearCart() {
+    if (!cart) {
+      return;
+    }
+
+    const productIds =
+      cart.items.map(
+        (item) =>
+          item.product.id,
+      );
+
+    for (
+      const productId of
+      productIds
+    ) {
+      await removeItem(
+        productId,
+      );
+    }
+
+    toast.success(
+      "Your cart has been cleared.",
     );
-
-  const subtotal =
-    cartProducts.reduce(
-      (
-        total,
-        cartProduct,
-      ) =>
-        total +
-        cartProduct.product
-          .price *
-          cartProduct.quantity,
-      0,
-    );
-
-  const promotionResult =
-    appliedPromotionCode
-      ? validatePromotion(
-          appliedPromotionCode,
-          subtotal,
-        )
-      : null;
-
-  const discountAmount =
-    promotionResult?.isValid
-      ? promotionResult.discountAmount
-      : 0;
-
-  const total =
-    Math.max(
-      subtotal - discountAmount,
-      0,
-    );
+  }
 
   if (!hasHydrated) {
     return (
@@ -143,7 +125,9 @@ export default function CartPage() {
         <Section>
           <Container>
             <div className="rounded-2xl border p-10 text-center">
-              <p className="text-muted-foreground">
+              <LoaderCircle className="mx-auto h-7 w-7 animate-spin text-red-600" />
+
+              <p className="mt-3 text-muted-foreground">
                 Loading your cart...
               </p>
             </div>
@@ -152,6 +136,24 @@ export default function CartPage() {
       </main>
     );
   }
+
+  const items =
+    cart?.items ?? [];
+
+  const totalQuantity =
+    cart?.totalQuantity ??
+    0;
+
+  const subtotal =
+    cart?.subtotal ?? 0;
+
+  const discountAmount =
+    cart?.discountAmount ??
+    0;
+
+  const total =
+    cart?.totalBeforeShipping ??
+    0;
 
   return (
     <main>
@@ -169,19 +171,28 @@ export default function CartPage() {
 
               <p className="mt-4 text-muted-foreground">
                 {totalQuantity}{" "}
-                {totalQuantity === 1
+                {totalQuantity ===
+                1
                   ? "item"
                   : "items"}{" "}
                 in your cart
               </p>
             </div>
 
-            {cartProducts.length >
+            {items.length >
               0 && (
               <Button
                 type="button"
                 variant="outline"
-                onClick={clearCart}
+                disabled={
+                  isLoading
+                }
+                onClick={() => {
+                  void runCartAction(
+                    clearCart,
+                    "Unable to clear your cart.",
+                  );
+                }}
               >
                 <Trash2 className="h-4 w-4" />
                 Clear Cart
@@ -189,21 +200,29 @@ export default function CartPage() {
             )}
           </div>
 
-          {cartProducts.length >
-          0 ? (
+          {items.length > 0 ? (
             <div className="mt-12 grid gap-10 lg:grid-cols-[1fr_360px]">
               <div className="space-y-6">
-                {cartProducts.map(
-                  ({
-                    product,
-                    quantity,
-                  }) => {
+                {items.map(
+                  (item) => {
+                    const product =
+                      item.product;
+
                     const primaryImage =
-                      product.images[0];
+                      product.images.find(
+                        (
+                          image,
+                        ) =>
+                          image.isPrimary,
+                      ) ??
+                      product
+                        .images[0];
 
                     return (
                       <article
-                        key={product.id}
+                        key={
+                          item.id
+                        }
                         className="grid gap-6 rounded-2xl border p-5 sm:grid-cols-[180px_1fr]"
                       >
                         <Link
@@ -225,21 +244,25 @@ export default function CartPage() {
                           <div className="flex items-start justify-between gap-4">
                             <div>
                               <p className="text-sm font-medium uppercase tracking-wide text-muted-foreground">
-                                {product.brand}
+                                {
+                                  product.brand
+                                }
                               </p>
 
                               <Link
                                 href={`/products/${product.slug}`}
                               >
                                 <h2 className="mt-2 text-xl font-semibold hover:text-red-600">
-                                  {product.name}
+                                  {
+                                    product.name
+                                  }
                                 </h2>
                               </Link>
 
                               <p className="mt-3 font-semibold">
                                 {formatCurrency(
                                   product.price,
-                                  product.currency,
+                                  "INR",
                                 )}
                               </p>
                             </div>
@@ -248,12 +271,19 @@ export default function CartPage() {
                               type="button"
                               variant="ghost"
                               size="icon"
-                              aria-label={`Remove ${product.name} from cart`}
-                              onClick={() =>
-                                removeItem(
-                                  product.id,
-                                )
+                              disabled={
+                                isLoading
                               }
+                              aria-label={`Remove ${product.name} from cart`}
+                              onClick={() => {
+                                void runCartAction(
+                                  () =>
+                                    removeItem(
+                                      product.id,
+                                    ),
+                                  "Unable to remove the item.",
+                                );
+                              }}
                             >
                               <Trash2 className="h-4 w-4" />
                             </Button>
@@ -265,18 +295,28 @@ export default function CartPage() {
                                 type="button"
                                 variant="ghost"
                                 size="icon"
-                                aria-label={`Decrease ${product.name} quantity`}
-                                onClick={() =>
-                                  decreaseQuantity(
-                                    product.id,
-                                  )
+                                disabled={
+                                  isLoading
                                 }
+                                aria-label={`Decrease ${product.name} quantity`}
+                                onClick={() => {
+                                  void runCartAction(
+                                    () =>
+                                      decreaseQuantity(
+                                        product.id,
+                                        item.quantity,
+                                      ),
+                                    "Unable to update quantity.",
+                                  );
+                                }}
                               >
                                 <Minus className="h-4 w-4" />
                               </Button>
 
                               <span className="min-w-10 text-center text-sm font-semibold">
-                                {quantity}
+                                {
+                                  item.quantity
+                                }
                               </span>
 
                               <Button
@@ -284,16 +324,21 @@ export default function CartPage() {
                                 variant="ghost"
                                 size="icon"
                                 disabled={
-                                  quantity >=
-                                  product.stockQuantity
+                                  isLoading ||
+                                  item.quantity >=
+                                    product.stockQuantity
                                 }
                                 aria-label={`Increase ${product.name} quantity`}
-                                onClick={() =>
-                                  increaseQuantity(
-                                    product.id,
-                                    product.stockQuantity,
-                                  )
-                                }
+                                onClick={() => {
+                                  void runCartAction(
+                                    () =>
+                                      increaseQuantity(
+                                        product.id,
+                                        item.quantity,
+                                      ),
+                                    "Unable to update quantity.",
+                                  );
+                                }}
                               >
                                 <Plus className="h-4 w-4" />
                               </Button>
@@ -301,9 +346,8 @@ export default function CartPage() {
 
                             <p className="font-bold">
                               {formatCurrency(
-                                product.price *
-                                  quantity,
-                                product.currency,
+                                item.lineTotal,
+                                "INR",
                               )}
                             </p>
                           </div>
@@ -328,7 +372,7 @@ export default function CartPage() {
                 </div>
 
                 <div className="mt-6 space-y-4 border-t pt-6">
-                  <div className="flex items-center justify-between text-muted-foreground">
+                  <div className="flex justify-between text-muted-foreground">
                     <span>
                       Subtotal
                     </span>
@@ -343,7 +387,7 @@ export default function CartPage() {
 
                   {discountAmount >
                     0 && (
-                    <div className="flex items-center justify-between text-green-700">
+                    <div className="flex justify-between text-green-700">
                       <span>
                         Coupon discount
                       </span>
@@ -358,18 +402,19 @@ export default function CartPage() {
                     </div>
                   )}
 
-                  <div className="flex items-center justify-between text-muted-foreground">
+                  <div className="flex justify-between text-muted-foreground">
                     <span>
                       Shipping
                     </span>
 
                     <span>
-                      Calculated at checkout
+                      Calculated at
+                      checkout
                     </span>
                   </div>
 
                   <div className="border-t pt-4">
-                    <div className="flex items-center justify-between text-lg font-bold">
+                    <div className="flex justify-between text-lg font-bold">
                       <span>
                         Total
                       </span>
@@ -422,8 +467,9 @@ export default function CartPage() {
               </h2>
 
               <p className="mx-auto mt-3 max-w-md text-muted-foreground">
-                Add products to your cart and
-                they will appear here.
+                Add products to your
+                cart and they will
+                appear here.
               </p>
 
               <Link

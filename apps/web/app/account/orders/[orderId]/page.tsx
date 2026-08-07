@@ -1,12 +1,23 @@
-import type { Metadata } from "next";
+"use client";
+
+import {
+  useEffect,
+  useState,
+} from "react";
+
 import Link from "next/link";
-import { notFound } from "next/navigation";
+
+import {
+  useParams,
+} from "next/navigation";
 
 import {
   ArrowLeft,
   CreditCard,
+  LoaderCircle,
   MapPin,
   Package,
+  Truck,
 } from "lucide-react";
 
 import OrderActions from "@/components/account/OrderActions";
@@ -14,61 +25,147 @@ import OrderStatusTimeline from "@/components/account/OrderStatusTimeline";
 import ProductImage from "@/components/products/ProductImage";
 
 import {
-  getAllOrders,
-  getOrderById,
-} from "@/data/orders";
+  ApiClientError,
+} from "@/lib/api/client";
+
+import {
+  getOrderDetails,
+} from "@/lib/api/orders";
 
 import {
   formatCurrency,
 } from "@/lib/format-currency";
 
 import {
+  buildOrderTimeline,
+  formatOrderDate,
   getOrderStatusClassName,
   getOrderStatusLabel,
+  getPaymentMethodLabel,
+  getShippingMethodLabel,
 } from "@/lib/orders";
 
-type OrderDetailsPageProps = {
-  params: Promise<{
-    orderId: string;
-  }>;
-};
+import type {
+  OrderDetails,
+} from "@/types/order";
 
-export function generateStaticParams() {
-  return getAllOrders().map((order) => ({
-    orderId: order.id,
-  }));
-}
+export default function OrderDetailsPage() {
+  const params =
+    useParams<{
+      orderId: string;
+    }>();
 
-export async function generateMetadata({
-  params,
-}: OrderDetailsPageProps): Promise<Metadata> {
-  const { orderId } = await params;
+  const [
+    order,
+    setOrder,
+  ] =
+    useState<OrderDetails | null>(
+      null,
+    );
 
-  const order = getOrderById(orderId);
+  const [
+    isLoading,
+    setIsLoading,
+  ] = useState(true);
 
-  if (!order) {
-    return {
-      title: "Order Not Found",
+  const [
+    errorMessage,
+    setErrorMessage,
+  ] = useState<string | null>(
+    null,
+  );
+
+  useEffect(() => {
+    let requestIsActive =
+      true;
+
+    const orderId =
+      params.orderId;
+
+    void getOrderDetails(
+      orderId,
+    )
+      .then((response) => {
+        if (
+          !requestIsActive
+        ) {
+          return;
+        }
+
+        setOrder(
+          response.order,
+        );
+      })
+      .catch(
+        (error: unknown) => {
+          if (
+            !requestIsActive
+          ) {
+            return;
+          }
+
+          setErrorMessage(
+            error instanceof
+            ApiClientError
+              ? error.message
+              : "Unable to load this order.",
+          );
+        },
+      )
+      .finally(() => {
+        if (
+          requestIsActive
+        ) {
+          setIsLoading(
+            false,
+          );
+        }
+      });
+
+    return () => {
+      requestIsActive =
+        false;
     };
+  }, [params.orderId]);
+
+  if (isLoading) {
+    return (
+      <div className="rounded-2xl border p-12 text-center">
+        <LoaderCircle className="mx-auto h-7 w-7 animate-spin text-red-600" />
+
+        <p className="mt-3 text-muted-foreground">
+          Loading order...
+        </p>
+      </div>
+    );
   }
 
-  return {
-    title: `Order ${order.id}`,
-    description:
-      "View your HotLap order details and delivery status.",
-  };
-}
+  if (
+    errorMessage ||
+    !order
+  ) {
+    return (
+      <div>
+        <Link
+          href="/account/orders"
+          className="inline-flex items-center gap-2 text-sm font-medium text-muted-foreground hover:text-foreground"
+        >
+          <ArrowLeft className="h-4 w-4" />
+          Back to Orders
+        </Link>
 
-export default async function OrderDetailsPage({
-  params,
-}: OrderDetailsPageProps) {
-  const { orderId } = await params;
-
-  const order = getOrderById(orderId);
-
-  if (!order) {
-    notFound();
+        <div className="mt-8 rounded-2xl border border-red-200 bg-red-50 p-6 text-red-800">
+          {errorMessage ??
+            "Order not found."}
+        </div>
+      </div>
+    );
   }
+
+  const timeline =
+    buildOrderTimeline(
+      order,
+    );
 
   return (
     <div>
@@ -87,11 +184,16 @@ export default async function OrderDetailsPage({
           </p>
 
           <h1 className="mt-3 text-4xl font-bold tracking-tight">
-            {order.id}
+            {
+              order.orderNumber
+            }
           </h1>
 
           <p className="mt-3 text-muted-foreground">
-            Placed on {order.placedOn}
+            Placed{" "}
+            {formatOrderDate(
+              order.placedAt,
+            )}
           </p>
         </div>
 
@@ -118,66 +220,82 @@ export default async function OrderDetailsPage({
             </div>
 
             <div className="mt-6 divide-y">
-              {order.items.map((item) => (
-                <article
-                  key={item.productId}
-                  className="grid gap-5 py-6 first:pt-0 last:pb-0 sm:grid-cols-[120px_1fr]"
-                >
-                  <Link
-                    href={`/products/${item.productSlug}`}
-                    className="group overflow-hidden rounded-xl border bg-muted"
+              {order.items.map(
+                (item) => (
+                  <article
+                    key={
+                      item.id
+                    }
+                    className="grid gap-5 py-5 first:pt-0 last:pb-0 sm:grid-cols-[100px_1fr]"
                   >
-                    <ProductImage
-                      src={item.productImageUrl}
-                      alt={item.productImageAlt}
-                    />
-                  </Link>
+                    <div className="overflow-hidden rounded-xl border bg-muted">
+                      <ProductImage
+                        src={
+                          item.productImageUrl ??
+                          undefined
+                        }
+                        alt={
+                          item.productImageAlt
+                        }
+                      />
+                    </div>
 
-                  <div className="flex flex-col justify-center">
-                    <Link
-                      href={`/products/${item.productSlug}`}
-                    >
-                      <h3 className="text-lg font-semibold hover:text-red-600">
-                        {item.productName}
-                      </h3>
-                    </Link>
+                    <div>
+                      <Link
+                        href={`/products/${item.productSlug}`}
+                        className="font-semibold hover:text-red-600"
+                      >
+                        {
+                          item.productName
+                        }
+                      </Link>
 
-                    <p className="mt-2 text-sm text-muted-foreground">
-                      Quantity: {item.quantity}
-                    </p>
+                      <p className="mt-2 text-sm text-muted-foreground">
+                        SKU:{" "}
+                        {
+                          item.sku
+                        }
+                      </p>
 
-                    <p className="mt-3 font-bold">
-                      {formatCurrency(
-                        item.unitPrice *
-                          item.quantity,
-                        "INR",
-                      )}
-                    </p>
-                  </div>
-                </article>
-              ))}
+                      <p className="mt-2 text-sm">
+                        Quantity:{" "}
+                        {
+                          item.quantity
+                        }
+                      </p>
+
+                      <p className="mt-2 font-semibold">
+                        {formatCurrency(
+                          item.lineTotal,
+                          "INR",
+                        )}
+                      </p>
+                    </div>
+                  </article>
+                ),
+              )}
             </div>
           </section>
 
           <section className="rounded-2xl border bg-card p-6">
             <h2 className="text-2xl font-semibold">
-              Shipment Progress
+              Order Progress
             </h2>
 
-            <div className="mt-7">
+            <div className="mt-6">
               <OrderStatusTimeline
-                timeline={order.timeline}
+                timeline={
+                  timeline
+                }
               />
             </div>
           </section>
-        </div>
 
-        <div className="space-y-6">
           <section className="rounded-2xl border bg-card p-6">
             <div className="flex items-center gap-3">
-              <MapPin className="h-5 w-5 text-red-600" />
+              <MapPin className="h-6 w-6 text-red-600" />
 
-              <h2 className="text-xl font-semibold">
+              <h2 className="text-2xl font-semibold">
                 Delivery Address
               </h2>
             </div>
@@ -201,18 +319,33 @@ export default async function OrderDetailsPage({
                 .addressLine2 && (
                 <p>
                   {
-                    order.deliveryAddress
+                    order
+                      .deliveryAddress
                       .addressLine2
                   }
                 </p>
               )}
 
               <p>
-                {order.deliveryAddress.city},{" "}
-                {order.deliveryAddress.state}{" "}
+                {
+                  order.deliveryAddress
+                    .city
+                }
+                ,{" "}
+                {
+                  order.deliveryAddress
+                    .state
+                }{" "}
                 {
                   order.deliveryAddress
                     .postalCode
+                }
+              </p>
+
+              <p>
+                {
+                  order.deliveryAddress
+                    .country
                 }
               </p>
 
@@ -226,18 +359,27 @@ export default async function OrderDetailsPage({
             </address>
           </section>
 
+          <OrderActions
+            orderId={
+              order.orderNumber
+            }
+            items={
+              order.items
+            }
+          />
+        </div>
+
+        <aside className="h-fit space-y-6">
           <section className="rounded-2xl border bg-card p-6">
-            <div className="flex items-center gap-3">
-              <CreditCard className="h-5 w-5 text-red-600" />
+            <h2 className="text-xl font-semibold">
+              Order Summary
+            </h2>
 
-              <h2 className="text-xl font-semibold">
-                Payment Summary
-              </h2>
-            </div>
-
-            <div className="mt-5 space-y-4">
+            <div className="mt-6 space-y-4 text-sm">
               <div className="flex justify-between text-muted-foreground">
-                <span>Subtotal</span>
+                <span>
+                  Subtotal
+                </span>
 
                 <span>
                   {formatCurrency(
@@ -247,13 +389,11 @@ export default async function OrderDetailsPage({
                 </span>
               </div>
 
-              {order.discountAmount > 0 && (
+              {order.discountAmount >
+                0 && (
                 <div className="flex justify-between text-green-700">
                   <span>
                     Discount
-                    {order.appliedPromotionCode
-                      ? ` (${order.appliedPromotionCode})`
-                      : ""}
                   </span>
 
                   <span>
@@ -267,11 +407,14 @@ export default async function OrderDetailsPage({
               )}
 
               <div className="flex justify-between text-muted-foreground">
-                <span>Shipping</span>
+                <span>
+                  Shipping
+                </span>
 
                 <span>
-                  {order.shippingCost === 0
-                    ? "Free"
+                  {order.shippingCost ===
+                  0
+                    ? "FREE"
                     : formatCurrency(
                         order.shippingCost,
                         "INR",
@@ -280,7 +423,9 @@ export default async function OrderDetailsPage({
               </div>
 
               <div className="flex justify-between border-t pt-4 text-lg font-bold">
-                <span>Total</span>
+                <span>
+                  Total
+                </span>
 
                 <span>
                   {formatCurrency(
@@ -289,21 +434,47 @@ export default async function OrderDetailsPage({
                   )}
                 </span>
               </div>
-
-              <p className="border-t pt-4 text-sm text-muted-foreground">
-                Payment method:{" "}
-                <span className="font-medium text-foreground">
-                  {order.paymentMethod}
-                </span>
-              </p>
             </div>
           </section>
 
-          <OrderActions
-            orderId={order.id}
-            items={order.items}
-          />
-        </div>
+          <section className="rounded-2xl border bg-card p-6">
+            <div className="flex items-center gap-3">
+              <CreditCard className="h-5 w-5 text-red-600" />
+
+              <h2 className="font-semibold">
+                Payment
+              </h2>
+            </div>
+
+            <p className="mt-4 text-sm text-muted-foreground">
+              {getPaymentMethodLabel(
+                order.paymentMethod,
+              )}
+            </p>
+
+            <p className="mt-2 text-sm font-medium">
+              {
+                order.paymentStatus
+              }
+            </p>
+          </section>
+
+          <section className="rounded-2xl border bg-card p-6">
+            <div className="flex items-center gap-3">
+              <Truck className="h-5 w-5 text-red-600" />
+
+              <h2 className="font-semibold">
+                Shipping
+              </h2>
+            </div>
+
+            <p className="mt-4 text-sm text-muted-foreground">
+              {getShippingMethodLabel(
+                order.shippingMethod,
+              )}
+            </p>
+          </section>
+        </aside>
       </div>
     </div>
   );
