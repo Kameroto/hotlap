@@ -2,19 +2,21 @@ import type {
   Metadata,
 } from "next";
 
+import Link from "next/link";
+
+import {
+  ChevronRight,
+} from "lucide-react";
+
 import {
   notFound,
 } from "next/navigation";
 
-import AddToCartButton from "@/components/cart/AddToCartButton";
-
 import Container from "@/components/layout/Container";
 import Section from "@/components/layout/Section";
 
-import ProductBadges from "@/components/products/ProductBadges";
-import ProductImage from "@/components/products/ProductImage";
-import ProductPrice from "@/components/products/ProductPrice";
-import ProductRating from "@/components/products/ProductRating";
+import ProductGallery from "@/components/products/ProductGallery";
+import ProductPurchasePanel from "@/components/products/ProductPurchasePanel";
 
 import {
   findProductBySlug,
@@ -71,158 +73,152 @@ export default async function ProductDetailsPage({
     notFound();
   }
 
-  const primaryImage =
-    product.images.find(
-      (image) =>
-        image.isPrimary,
-    ) ??
-    product.images[0];
-
-  const isInStock =
-    product.isInStock;
-
   return (
-    <main>
-      <Section>
+    <main className="overflow-hidden bg-[#080a0c]">
+      <section className="relative border-b border-white/8">
+        <div className="pointer-events-none absolute inset-0">
+          <div className="absolute top-0 left-[20%] size-[460px] rounded-full bg-primary/[0.035] blur-[140px]" />
+
+          <div className="absolute inset-0 opacity-[0.1] hotlap-grid-background" />
+        </div>
+
         <Container>
-          <div className="grid gap-12 lg:grid-cols-2 lg:gap-16">
-            <div className="group overflow-hidden rounded-3xl border bg-card">
-              <ProductImage
-                src={
-                  primaryImage?.url
-                }
-                alt={
-                  primaryImage?.alt ??
-                  product.name
-                }
-                badges={
-                  product.badges
-                }
-              />
-            </div>
+          <div className="relative py-6 sm:py-8">
+            <nav
+              aria-label="Breadcrumb"
+              className="flex flex-wrap items-center gap-1.5 text-xs text-muted-foreground"
+            >
+              <Link
+                href="/"
+                className="transition-colors hover:text-primary"
+              >
+                Home
+              </Link>
 
-            <div>
-              <p className="text-sm font-semibold uppercase tracking-[0.2em] text-muted-foreground">
-                {
-                  product.brand
-                }
-              </p>
+              <ChevronRight className="size-3" />
 
-              <h1 className="mt-3 text-4xl font-bold tracking-tight lg:text-5xl">
-                {
-                  product.name
-                }
-              </h1>
+              <Link
+                href="/products"
+                className="transition-colors hover:text-primary"
+              >
+                Products
+              </Link>
 
-              <p className="mt-3 text-sm text-muted-foreground">
+              <ChevronRight className="size-3" />
+
+              <Link
+                href={`/products?category=${product.category.slug}`}
+                className="transition-colors hover:text-primary"
+              >
                 {
                   product.category
                     .name
                 }
-              </p>
+              </Link>
 
-              <div className="mt-5">
-                <ProductRating
-                  rating={
-                    product.ratingAverage
-                  }
-                  reviewCount={
-                    product.reviewCount
-                  }
-                />
-              </div>
+              <ChevronRight className="size-3" />
 
-              <div className="mt-6">
-                <ProductPrice
-                  price={
-                    product.price
-                  }
-                  compareAtPrice={
-                    product.compareAtPrice ??
-                    undefined
-                  }
-                  currency="INR"
-                />
-              </div>
+              <span className="max-w-[180px] truncate text-foreground sm:max-w-none">
+                {product.name}
+              </span>
+            </nav>
+          </div>
+        </Container>
+      </section>
 
-              <p
-                className={`mt-4 text-sm font-semibold ${
-                  isInStock
-                    ? "text-green-600"
-                    : "text-red-600"
-                }`}
-              >
-                {isInStock
-                  ? `${product.stockQuantity} units available`
-                  : "Currently out of stock"}
-              </p>
+      <Section className="relative">
+        <div className="pointer-events-none absolute top-20 right-[-15%] size-[520px] rounded-full bg-primary/[0.03] blur-[150px]" />
 
-              <p className="mt-6 text-lg leading-8 text-muted-foreground">
-                {
-                  product.description
-                }
-              </p>
+        <Container>
+          <div className="relative grid items-start gap-10 lg:grid-cols-[1.08fr_0.92fr] lg:gap-12 xl:gap-16">
+            <ProductGallery
+              productName={
+                product.name
+              }
+              images={
+                product.images
+              }
+              badges={
+                product.badges
+              }
+            />
 
-              <AddToCartButton
-                productId={
-                  product.id
-                }
-                productName={
-                  product.name
-                }
-                stockQuantity={
-                  product.stockQuantity
-                }
-                size="lg"
-                className="mt-8 w-full sm:w-auto"
-              />
-
-              <div className="mt-10">
-                <ProductBadges
-                  badges={
-                    product.badges
-                  }
-                />
-              </div>
-            </div>
+            <ProductPurchasePanel
+              product={
+                product
+              }
+            />
           </div>
 
-          <div className="mt-20">
-            <h2 className="text-3xl font-bold tracking-tight">
-              Product Specifications
-            </h2>
+          <div className="relative mt-16 border-t border-white/8 pt-14 lg:mt-20 lg:pt-16">
+            <div className="grid gap-10 lg:grid-cols-[0.85fr_1.15fr] lg:gap-16">
+              <div>
+                <p className="hotlap-kicker">
+                  Product Overview
+                </p>
 
-            <div className="mt-8 overflow-hidden rounded-2xl border">
-              <dl className="divide-y">
-                {Object.entries(
-                  product.specifications,
-                ).map(
-                  ([
-                    label,
-                    value,
-                  ]) => (
-                    <div
-                      key={
-                        label
-                      }
-                      className="grid gap-2 px-6 py-5 sm:grid-cols-2"
-                    >
-                      <dt className="font-medium">
-                        {
+                <h2 className="hotlap-heading mt-4 text-3xl text-foreground sm:text-4xl">
+                  Built Around the
+                  Details.
+                </h2>
+              </div>
+
+              <div>
+                <p className="text-base leading-8 text-muted-foreground">
+                  {
+                    product.description
+                  }
+                </p>
+              </div>
+            </div>
+
+            {Object.keys(
+              product.specifications,
+            ).length >
+              0 && (
+              <div className="mt-12 overflow-hidden rounded-2xl border border-white/10 bg-[#101316]">
+                <div className="border-b border-white/8 px-5 py-5 sm:px-7">
+                  <h2 className="text-lg font-bold tracking-[-0.02em] text-foreground">
+                    Technical
+                    Specifications
+                  </h2>
+                </div>
+
+                <dl className="divide-y divide-white/8">
+                  {Object.entries(
+                    product.specifications,
+                  ).map(
+                    ([
+                      label,
+                      value,
+                    ]) => (
+                      <div
+                        key={
                           label
                         }
-                      </dt>
+                        className="grid gap-2 px-5 py-4 sm:grid-cols-[0.7fr_1.3fr] sm:px-7 sm:py-5"
+                      >
+                        <dt className="text-sm font-semibold capitalize text-foreground">
+                          {label
+                            .replace(
+                              /([a-z])([A-Z])/g,
+                              "$1 $2",
+                            )
+                            .replace(
+                              /[-_]/g,
+                              " ",
+                            )}
+                        </dt>
 
-                      <dd className="text-muted-foreground">
-                        {
-                          value
-                        }
-                      </dd>
-                    </div>
-                  ),
-                )}
-              </dl>
-            </div>
+                        <dd className="text-sm text-muted-foreground sm:text-right">
+                          {value}
+                        </dd>
+                      </div>
+                    ),
+                  )}
+                </dl>
+              </div>
+            )}
           </div>
         </Container>
       </Section>
