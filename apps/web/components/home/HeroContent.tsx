@@ -1,30 +1,4 @@
-import {
-  Gauge,
-  ShieldCheck,
-  Sparkles,
-} from "lucide-react";
-
 import CTAButtons from "@/components/shared/CTAButtons";
-
-const highlights = [
-  {
-    icon: Gauge,
-    label:
-      "Performance First",
-  },
-
-  {
-    icon: ShieldCheck,
-    label:
-      "Genuine Products",
-  },
-
-  {
-    icon: Sparkles,
-    label:
-      "Built for Enthusiasts",
-  },
-];
 
 export default function HeroContent() {
   return (
@@ -56,30 +30,6 @@ export default function HeroContent() {
       </p>
 
       <CTAButtons className="mt-9" />
-
-      <div className="mt-10 flex flex-wrap gap-x-6 gap-y-4 border-t border-white/8 pt-6">
-        {highlights.map(
-          ({
-            icon: Icon,
-            label,
-          }) => (
-            <div
-              key={
-                label
-              }
-              className="flex items-center gap-2.5"
-            >
-              <span className="flex size-8 items-center justify-center rounded-lg border border-primary/25 bg-primary/8 text-primary">
-                <Icon className="size-4" />
-              </span>
-
-              <span className="text-xs font-semibold uppercase tracking-[0.08em] text-muted-foreground">
-                {label}
-              </span>
-            </div>
-          ),
-        )}
-      </div>
     </div>
   );
 }

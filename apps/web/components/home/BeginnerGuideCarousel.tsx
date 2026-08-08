@@ -25,6 +25,8 @@ import {
 } from "lucide-react";
 
 import {
+  useCallback,
+  useEffect,
   useRef,
   useState,
 } from "react";
@@ -40,27 +42,18 @@ import {
 const slides = [
   {
     id: "grade",
-    eyebrow: "01 · RC Basics",
     title:
       "Hobby Grade vs Toy Grade",
-    description:
-      "Understand what separates a real hobby RC platform from a basic toy before you spend your money.",
   },
   {
     id: "scale",
-    eyebrow: "02 · Understanding Size",
     title:
       "What Does Scale Mean in RC?",
-    description:
-      "RC scale tells you how large a model is compared with the full-size vehicle it represents.",
   },
   {
     id: "first-rc",
-    eyebrow: "03 · Buyer Guide",
     title:
       "How to Choose Your First RC Car",
-    description:
-      "Start with how and where you want to drive, then choose the platform that fits your experience and budget.",
   },
 ] as const;
 
@@ -70,10 +63,44 @@ export default function BeginnerGuideCarousel() {
       null,
     );
 
+  const slideRefs =
+    useRef<
+      Array<HTMLDivElement | null>
+    >([]);
+
+  const activeSlideRef =
+    useRef(0);
+
   const [
     activeSlide,
     setActiveSlide,
   ] = useState(0);
+
+  const syncCarouselHeight =
+    useCallback(
+      (
+        index: number,
+      ) => {
+        const container =
+          scrollContainerRef.current;
+
+        const slide =
+          slideRefs.current[
+            index
+          ];
+
+        if (
+          !container ||
+          !slide
+        ) {
+          return;
+        }
+
+        container.style.height =
+          `${slide.scrollHeight}px`;
+      },
+      [],
+    );
 
   function goToSlide(
     index: number,
@@ -94,20 +121,32 @@ export default function BeginnerGuideCarousel() {
         ),
       );
 
-    const slide =
-      container.children[
-        nextIndex
-      ] as HTMLElement | undefined;
-
-    slide?.scrollIntoView({
-      behavior: "smooth",
-      block: "nearest",
-      inline: "start",
-    });
+    activeSlideRef.current =
+      nextIndex;
 
     setActiveSlide(
       nextIndex,
     );
+
+    syncCarouselHeight(
+      nextIndex,
+    );
+
+    const slide =
+      slideRefs.current[
+        nextIndex
+      ];
+
+    if (!slide) {
+      return;
+    }
+
+    container.scrollTo({
+      left:
+        slide.offsetLeft,
+      behavior:
+        "smooth",
+    });
   }
 
   function handleScroll() {
@@ -116,7 +155,8 @@ export default function BeginnerGuideCarousel() {
 
     if (
       !container ||
-      container.clientWidth === 0
+      container.clientWidth ===
+        0
     ) {
       return;
     }
@@ -136,15 +176,63 @@ export default function BeginnerGuideCarousel() {
         ),
       );
 
-    if (
-      normalizedIndex !==
-      activeSlide
-    ) {
-      setActiveSlide(
-        normalizedIndex,
-      );
-    }
+    activeSlideRef.current =
+      normalizedIndex;
+
+    syncCarouselHeight(
+      normalizedIndex,
+    );
+
+    setActiveSlide(
+      (
+        currentSlide,
+      ) =>
+        currentSlide ===
+        normalizedIndex
+          ? currentSlide
+          : normalizedIndex,
+    );
   }
+
+  useEffect(() => {
+    const resizeObserver =
+      new ResizeObserver(
+        () => {
+          syncCarouselHeight(
+            activeSlideRef.current,
+          );
+        },
+      );
+
+    slideRefs.current.forEach(
+      (slide) => {
+        if (slide) {
+          resizeObserver.observe(
+            slide,
+          );
+        }
+      },
+    );
+
+    const frame =
+      window.requestAnimationFrame(
+        () => {
+          syncCarouselHeight(
+            activeSlideRef.current,
+          );
+        },
+      );
+
+    return () => {
+      window.cancelAnimationFrame(
+        frame,
+      );
+
+      resizeObserver.disconnect();
+    };
+  }, [
+    syncCarouselHeight,
+  ]);
 
   return (
     <section className="relative overflow-hidden border-b border-white/8 bg-[#090b0d] py-16 md:py-20 lg:py-24">
@@ -170,11 +258,12 @@ export default function BeginnerGuideCarousel() {
             </h2>
 
             <p className="mt-5 max-w-2xl text-base leading-7 text-muted-foreground sm:text-lg">
-              A three-minute introduction
-              to the things every
-              first-time RC buyer should
-              understand before choosing a
-              car.
+              A three-minute
+              introduction to the
+              things every first-time
+              RC buyer should
+              understand before
+              choosing a car.
             </p>
           </div>
 
@@ -221,29 +310,54 @@ export default function BeginnerGuideCarousel() {
           onScroll={
             handleScroll
           }
-          className="flex snap-x snap-mandatory overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+          className="flex snap-x snap-mandatory items-start overflow-x-auto overflow-y-hidden transition-[height] duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
         >
-          <div className="w-full shrink-0 snap-start">
+          <div
+            ref={(
+              element,
+            ) => {
+              slideRefs.current[0] =
+                element;
+            }}
+            className="w-full shrink-0 snap-start self-start"
+          >
             <HobbyVsToySlide />
           </div>
 
-          <div className="w-full shrink-0 snap-start">
+          <div
+            ref={(
+              element,
+            ) => {
+              slideRefs.current[1] =
+                element;
+            }}
+            className="w-full shrink-0 snap-start self-start"
+          >
             <ScaleSlide />
           </div>
 
-          <div className="w-full shrink-0 snap-start">
+          <div
+            ref={(
+              element,
+            ) => {
+              slideRefs.current[2] =
+                element;
+            }}
+            className="w-full shrink-0 snap-start self-start"
+          >
             <ChooseFirstRcSlide />
           </div>
         </div>
 
-        <div className="mt-7 flex items-center justify-center gap-3">
+        <div className="mt-6 flex items-center justify-center gap-3">
           {slides.map(
             (
               slide,
               index,
             ) => {
               const isActive =
-                activeSlide === index;
+                activeSlide ===
+                index;
 
               return (
                 <button
@@ -292,14 +406,16 @@ function SlideShell({
   eyebrow: string;
   title: string;
   description: string;
-  children: React.ReactNode;
-  footer: React.ReactNode;
+  children:
+    React.ReactNode;
+  footer:
+    React.ReactNode;
 }) {
   return (
-    <article className="relative min-h-[640px] overflow-hidden rounded-2xl border border-white/10 bg-[#101316] shadow-[0_24px_70px_rgba(0,0,0,0.35)] sm:min-h-[600px]">
+    <article className="relative overflow-hidden rounded-2xl border border-white/10 bg-[#101316] shadow-[0_24px_70px_rgba(0,0,0,0.35)] sm:min-h-[600px]">
       <div className="pointer-events-none absolute top-0 right-0 h-72 w-72 rounded-full bg-primary/[0.055] blur-[100px]" />
 
-      <div className="relative flex min-h-[inherit] flex-col p-5 sm:p-7 lg:p-9">
+      <div className="relative flex flex-col p-5 sm:min-h-[600px] sm:p-7 lg:p-9">
         <div>
           <p className="text-xs font-bold uppercase tracking-[0.17em] text-primary">
             {eyebrow}
@@ -314,7 +430,7 @@ function SlideShell({
           </p>
         </div>
 
-        <div className="my-8 flex flex-1 items-center">
+        <div className="my-7 flex items-center sm:my-8 sm:flex-1">
           {children}
         </div>
 
@@ -329,47 +445,71 @@ function SlideShell({
 function HobbyVsToySlide() {
   const comparisonRows = [
     {
-      icon: Gauge,
+      icon:
+        Gauge,
+
       label:
         "Performance",
+
       hobby:
         "Higher speed, better control",
+
       toy:
         "Lower speed, basic control",
     },
+
     {
-      icon: ShieldCheck,
+      icon:
+        ShieldCheck,
+
       label:
         "Durability",
+
       hobby:
         "Designed for repeated hard use",
+
       toy:
         "Built mainly for casual play",
     },
+
     {
-      icon: Wrench,
+      icon:
+        Wrench,
+
       label:
         "Repairability",
+
       hobby:
         "Replace individual parts",
+
       toy:
         "Often replaced instead of repaired",
     },
+
     {
-      icon: Settings,
+      icon:
+        Settings,
+
       label:
         "Upgradeability",
+
       hobby:
         "Motors, suspension, tyres and more",
+
       toy:
         "Very limited upgrades",
     },
+
     {
-      icon: TrendingUp,
+      icon:
+        TrendingUp,
+
       label:
         "Long-term Value",
+
       hobby:
         "Higher entry price, longer ownership",
+
       toy:
         "Cheaper initially, limited lifespan",
     },
@@ -386,12 +526,14 @@ function HobbyVsToySlide() {
             href="/products?category=rc-cars"
             className={cn(
               buttonVariants({
-                size: "lg",
+                size:
+                  "lg",
               }),
               "group sm:min-w-[220px]",
             )}
           >
-            Buy Your First RC Car
+            Buy Your First
+            RC Car
 
             <ArrowRight className="transition-transform duration-300 group-hover:translate-x-1" />
           </Link>
@@ -402,6 +544,7 @@ function HobbyVsToySlide() {
               buttonVariants({
                 variant:
                   "outline",
+
                 size:
                   "lg",
               }),
@@ -417,11 +560,11 @@ function HobbyVsToySlide() {
         <div className="mb-4 grid grid-cols-[0.7fr_1fr_1fr] gap-2 text-xs font-bold uppercase tracking-[0.12em] sm:grid-cols-[0.8fr_1fr_1fr]">
           <span />
 
-          <div className="rounded-lg border border-primary/30 bg-primary/8 px-3 py-3 text-center text-primary">
+          <div className="rounded-lg border border-primary/30 bg-primary/8 px-2 py-3 text-center text-primary sm:px-3">
             Hobby Grade
           </div>
 
-          <div className="rounded-lg border border-white/10 bg-white/[0.025] px-3 py-3 text-center text-muted-foreground">
+          <div className="rounded-lg border border-white/10 bg-white/[0.025] px-2 py-3 text-center text-muted-foreground sm:px-3">
             Toy Grade
           </div>
         </div>
@@ -467,37 +610,51 @@ function ScaleSlide() {
     {
       scale:
         "1/64",
+
       label:
         "Pocket Size",
+
       description:
         "Tiny models suited to collecting and very small indoor spaces.",
+
       width:
         "w-20",
-      iconSize:
+
+      wheelSize:
         "size-7",
     },
+
     {
       scale:
         "1/16",
+
       label:
         "Balanced",
+
       description:
         "Compact enough to carry easily while still delivering real performance.",
+
       width:
         "w-32",
-      iconSize:
+
+      wheelSize:
         "size-10",
     },
+
     {
       scale:
         "1/10",
+
       label:
         "Full Hobby Experience",
+
       description:
         "A popular hobby size with strong performance, presence and parts support.",
+
       width:
         "w-44",
-      iconSize:
+
+      wheelSize:
         "size-14",
     },
   ];
@@ -512,7 +669,8 @@ function ScaleSlide() {
           href="/products?category=rc-cars"
           className={cn(
             buttonVariants({
-              size: "lg",
+              size:
+                "lg",
             }),
             "group w-full sm:w-auto sm:min-w-[190px]",
           )}
@@ -533,7 +691,7 @@ function ScaleSlide() {
               key={
                 scale.scale
               }
-              className="group relative flex min-h-[300px] flex-col overflow-hidden rounded-xl border border-white/10 bg-black/20 p-5 transition-all duration-300 hover:border-primary/35 hover:bg-primary/[0.035]"
+              className="group relative flex min-h-[260px] flex-col overflow-hidden rounded-xl border border-white/10 bg-black/20 p-5 transition-all duration-300 hover:border-primary/35 hover:bg-primary/[0.035] lg:min-h-[300px]"
             >
               <div className="flex items-center justify-between">
                 <span className="text-2xl font-black tracking-[-0.04em] text-primary">
@@ -547,7 +705,7 @@ function ScaleSlide() {
                 </span>
               </div>
 
-              <div className="flex flex-1 items-center justify-center py-7">
+              <div className="flex flex-1 items-center justify-center py-6 lg:py-7">
                 <div
                   className={cn(
                     "relative flex h-20 items-center justify-center transition-transform duration-500 group-hover:scale-105",
@@ -564,14 +722,14 @@ function ScaleSlide() {
                     <div
                       className={cn(
                         "absolute -bottom-3 left-[8%] rounded-full border-4 border-[#050607] bg-[#20252a]",
-                        scale.iconSize,
+                        scale.wheelSize,
                       )}
                     />
 
                     <div
                       className={cn(
                         "absolute -right-[2%] -bottom-3 rounded-full border-4 border-[#050607] bg-[#20252a]",
-                        scale.iconSize,
+                        scale.wheelSize,
                       )}
                     />
                   </div>
@@ -590,20 +748,19 @@ function ScaleSlide() {
 
               <div className="mt-4 flex items-center gap-2 text-xs font-medium text-primary">
                 <span className="flex size-6 items-center justify-center rounded-md bg-primary/8">
-                  {
-                    index ===
-                    0 ? (
-                      <ToyBrick className="size-3.5" />
-                    ) : index ===
-                      1 ? (
-                      <Radio className="size-3.5" />
-                    ) : (
-                      <Zap className="size-3.5" />
-                    )
-                  }
+                  {index ===
+                  0 ? (
+                    <ToyBrick className="size-3.5" />
+                  ) : index ===
+                    1 ? (
+                    <Radio className="size-3.5" />
+                  ) : (
+                    <Zap className="size-3.5" />
+                  )}
                 </span>
 
-                Bigger scale as you move right
+                Bigger scale as
+                you move right
               </div>
             </div>
           ),
@@ -618,40 +775,55 @@ function ChooseFirstRcSlide() {
     {
       number:
         "01",
+
       icon:
         UserRound,
+
       title:
         "Know Your Experience",
+
       description:
         "Beginners should prioritise predictable handling, durability and readily available parts.",
     },
+
     {
       number:
         "02",
+
       icon:
         Mountain,
+
       title:
         "Choose Your Terrain",
+
       description:
         "Road, dirt, grass, jumps or crawling all favour different vehicle types.",
     },
+
     {
       number:
         "03",
+
       icon:
         Banknote,
+
       title:
         "Set Your Budget",
+
       description:
         "Include batteries, chargers and common replacement parts—not only the car.",
     },
+
     {
       number:
         "04",
+
       icon:
         PackageCheck,
+
       title:
         "Think Long Term",
+
       description:
         "Choose a platform with upgrades, replacement parts and room to improve.",
     },
@@ -667,12 +839,14 @@ function ChooseFirstRcSlide() {
           href="/products?category=rc-cars"
           className={cn(
             buttonVariants({
-              size: "lg",
+              size:
+                "lg",
             }),
             "group w-full sm:w-auto sm:min-w-[230px]",
           )}
         >
-          Buy Your First RC Car
+          Buy Your First RC
+          Car
 
           <ArrowRight className="transition-transform duration-300 group-hover:translate-x-1" />
         </Link>
