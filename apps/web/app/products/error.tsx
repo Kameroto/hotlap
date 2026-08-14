@@ -25,23 +25,27 @@ export default function ProductsError({
   reset,
 }: ProductsErrorProps) {
   return (
-    <main>
-      <Section>
-        <Container>
-          <div className="mx-auto max-w-xl rounded-3xl border border-red-200 bg-red-50 px-6 py-14 text-center">
-            <AlertTriangle className="mx-auto h-10 w-10 text-red-600" />
+    <main className="bg-[#080a0c]">
+      <Section className="relative overflow-hidden">
+        <div className="pointer-events-none absolute inset-0 opacity-[0.08] hotlap-grid-background" />
 
-            <h1 className="mt-5 text-3xl font-bold text-red-950">
+        <Container>
+          <div className="relative mx-auto max-w-xl rounded-3xl border border-white/10 bg-[#101316] px-6 py-14 text-center shadow-[0_24px_70px_rgba(0,0,0,0.3)]">
+            <div className="mx-auto flex size-14 items-center justify-center rounded-xl border border-primary/25 bg-primary/8 text-primary">
+              <AlertTriangle className="size-6" />
+            </div>
+
+            <h1 className="mt-5 text-3xl font-bold tracking-tight text-foreground">
               We couldn&apos;t load the catalogue
             </h1>
 
-            <p className="mt-3 leading-7 text-red-900/80">
+            <p className="mt-3 leading-7 text-muted-foreground">
               HotLap was unable to retrieve the latest products. Please try again.
             </p>
 
             {process.env.NODE_ENV ===
               "development" && (
-              <p className="mt-4 break-words rounded-lg bg-white/60 p-3 text-left font-mono text-xs text-red-900">
+              <p className="mt-4 break-words rounded-lg border border-white/8 bg-black/25 p-3 text-left font-mono text-xs text-muted-foreground">
                 {error.message}
               </p>
             )}
@@ -52,9 +56,9 @@ export default function ProductsError({
               onClick={
                 reset
               }
-              className="mt-7"
+              className="mt-7 outline-none focus-visible:ring-2 focus-visible:ring-primary/60 focus-visible:ring-offset-2 focus-visible:ring-offset-background"
             >
-              <RefreshCw className="h-4 w-4" />
+              <RefreshCw className="h-4 w-4 motion-reduce:animate-none" />
               Try Again
             </Button>
           </div>

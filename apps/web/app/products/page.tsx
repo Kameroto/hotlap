@@ -18,6 +18,7 @@ import {
 import {
   buildProductCatalogueUrl,
   parseProductCatalogueQuery,
+  productCatalogueQueryIsCanonical,
   type ProductSearchParams,
 } from "@/lib/product-catalog-query";
 
@@ -126,6 +127,19 @@ export default async function ProductsPage({
       resolvedSearchParams,
     );
 
+  if (
+    !productCatalogueQueryIsCanonical(
+      resolvedSearchParams,
+      catalogueQuery,
+    )
+  ) {
+    redirect(
+      buildProductCatalogueUrl(
+        catalogueQuery,
+      ),
+    );
+  }
+
   const categoryResponse =
     await getCategories();
 
@@ -181,22 +195,26 @@ export default async function ProductsPage({
    * filters change or products are removed.
    */
   if (
-    productResponse.pagination
-      .totalPages > 0 &&
     (
       catalogueQuery.page ??
       1
     ) >
-      productResponse.pagination
-        .totalPages
+      Math.max(
+        productResponse.pagination
+          .totalPages,
+        1,
+      )
   ) {
     redirect(
       buildProductCatalogueUrl({
         ...catalogueQuery,
 
         page:
-          productResponse.pagination
-            .totalPages,
+          Math.max(
+            productResponse.pagination
+              .totalPages,
+            1,
+          ),
       }),
     );
   }

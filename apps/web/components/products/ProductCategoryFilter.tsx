@@ -190,7 +190,7 @@ export default function ProductCategoryFilter({
 
   return (
     <div
-      className="mt-7 flex flex-wrap gap-2.5"
+      className="-mx-4 mt-7 flex snap-x snap-mandatory flex-nowrap gap-2.5 overflow-x-auto px-4 pb-2 [scrollbar-width:none] sm:mx-0 sm:flex-wrap sm:overflow-visible sm:px-0 sm:pb-0 [&::-webkit-scrollbar]:hidden"
       aria-label="Product categories"
     >
       <CategoryChip
@@ -268,7 +268,7 @@ function CategoryChip({
         isSelected
       }
       className={cn(
-        "group inline-flex h-10 items-center gap-2 rounded-full border px-4 text-sm font-semibold transition-all duration-300",
+        "group inline-flex h-10 shrink-0 snap-start items-center gap-2 rounded-full border px-4 text-sm font-semibold outline-none transition-all duration-300 focus-visible:ring-2 focus-visible:ring-primary/60 focus-visible:ring-offset-2 focus-visible:ring-offset-[#101316] motion-reduce:transition-none",
         isSelected
           ? [
               "border-primary",
@@ -281,6 +281,7 @@ function CategoryChip({
               "bg-white/[0.025]",
               "text-muted-foreground",
               "hover:-translate-y-0.5",
+              "motion-reduce:hover:translate-y-0",
               "hover:border-primary/45",
               "hover:bg-primary/[0.055]",
               "hover:text-foreground",
@@ -289,7 +290,7 @@ function CategoryChip({
     >
       <Icon
         className={cn(
-          "size-4 transition-transform duration-300",
+          "size-4 transition-transform duration-300 motion-reduce:transition-none",
           !isSelected &&
             "text-primary group-hover:scale-110",
         )}

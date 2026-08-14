@@ -7,6 +7,10 @@ import {
   ChevronRight,
 } from "lucide-react";
 
+import type {
+  MouseEvent,
+} from "react";
+
 import {
   buildProductCatalogueUrl,
 } from "@/lib/product-catalog-query";
@@ -101,43 +105,151 @@ export default function ProductPagination({
       pagination.totalPages,
     );
 
+  function handlePaginationClick(
+    event: MouseEvent<HTMLAnchorElement>,
+  ) {
+    if (
+      event.button !== 0 ||
+      event.metaKey ||
+      event.ctrlKey ||
+      event.shiftKey ||
+      event.altKey
+    ) {
+      return;
+    }
+
+    const resultsHeading =
+      document.getElementById(
+        "product-results",
+      );
+
+    resultsHeading?.scrollIntoView({
+      behavior:
+        window.matchMedia(
+          "(prefers-reduced-motion: reduce)",
+        ).matches
+          ? "auto"
+          : "smooth",
+      block: "start",
+    });
+  }
+
+  const navigationClassName =
+    "inline-flex h-10 items-center justify-center gap-2 rounded-lg border border-white/10 bg-white/[0.025] px-3 text-sm font-medium text-foreground outline-none transition-colors hover:border-primary/45 hover:bg-primary/[0.055] focus-visible:ring-2 focus-visible:ring-primary/60 focus-visible:ring-offset-2 focus-visible:ring-offset-background motion-reduce:transition-none";
+
+  const disabledNavigationClassName =
+    "inline-flex h-10 cursor-not-allowed items-center justify-center gap-2 rounded-lg border border-white/8 px-3 text-sm font-medium text-muted-foreground opacity-45";
+
   return (
     <nav
-      className="mt-12 flex flex-wrap items-center justify-center gap-2"
+      className="mt-12"
       aria-label="Product pagination"
     >
-      {pagination.hasPreviousPage ? (
-        <Link
-          href={buildProductCatalogueUrl({
-            ...query,
-
-            page:
-              pagination.page -
-              1,
-          })}
-          aria-label="Go to previous product page"
-          className="inline-flex h-10 items-center gap-2 rounded-lg border px-3 text-sm font-medium transition hover:bg-muted"
-        >
-          <ChevronLeft className="h-4 w-4" />
-
-          <span className="hidden sm:inline">
-            Previous
+      <div className="flex items-center justify-center gap-3 sm:hidden">
+        {pagination.hasPreviousPage ? (
+          <Link
+            href={buildProductCatalogueUrl({
+              ...query,
+              page:
+                pagination.page -
+                1,
+            })}
+            onClick={
+              handlePaginationClick
+            }
+            aria-label="Go to previous product page"
+            className={
+              navigationClassName
+            }
+          >
+            <ChevronLeft className="size-4" />
+          </Link>
+        ) : (
+          <span
+            aria-disabled="true"
+            className={
+              disabledNavigationClassName
+            }
+          >
+            <ChevronLeft className="size-4" />
           </span>
-        </Link>
-      ) : (
-        <span
-          aria-disabled="true"
-          className="inline-flex h-10 cursor-not-allowed items-center gap-2 rounded-lg border px-3 text-sm font-medium text-muted-foreground opacity-50"
-        >
-          <ChevronLeft className="h-4 w-4" />
+        )}
 
-          <span className="hidden sm:inline">
-            Previous
-          </span>
+        <span className="min-w-28 text-center text-sm font-semibold text-foreground">
+          Page {pagination.page} of{" "}
+          {pagination.totalPages}
         </span>
-      )}
 
-      {paginationItems.map(
+        {pagination.hasNextPage ? (
+          <Link
+            href={buildProductCatalogueUrl({
+              ...query,
+              page:
+                pagination.page +
+                1,
+            })}
+            onClick={
+              handlePaginationClick
+            }
+            aria-label="Go to next product page"
+            className={
+              navigationClassName
+            }
+          >
+            <ChevronRight className="size-4" />
+          </Link>
+        ) : (
+          <span
+            aria-disabled="true"
+            className={
+              disabledNavigationClassName
+            }
+          >
+            <ChevronRight className="size-4" />
+          </span>
+        )}
+      </div>
+
+      <div className="hidden flex-wrap items-center justify-center gap-2 sm:flex">
+        {pagination.hasPreviousPage ? (
+          <Link
+            href={buildProductCatalogueUrl({
+              ...query,
+
+              page:
+                pagination.page -
+                1,
+            })}
+            onClick={
+              handlePaginationClick
+            }
+            aria-label="Go to previous product page"
+            className={
+              navigationClassName
+            }
+          >
+            <ChevronLeft className="h-4 w-4" />
+
+            <span>
+              Previous
+            </span>
+          </Link>
+        ) : (
+          <span
+            aria-disabled="true"
+            className={
+              disabledNavigationClassName
+            }
+          >
+            <ChevronLeft className="h-4 w-4" />
+
+            <span>
+              Previous
+            </span>
+          </span>
+        )}
+
+        {paginationItems.map(
         (item) => {
           if (
             item ===
@@ -161,31 +273,35 @@ export default function ProductPagination({
             pagination.page;
 
           return (
-            <Link
-              key={item}
-              href={buildProductCatalogueUrl({
-                ...query,
-                page: item,
-              })}
-              aria-label={`Go to product page ${item}`}
-              aria-current={
-                isCurrentPage
-                  ? "page"
-                  : undefined
-              }
-              className={`inline-flex h-10 min-w-10 items-center justify-center rounded-lg border px-3 text-sm font-medium transition ${
-                isCurrentPage
-                  ? "bg-primary text-primary-foreground"
-                  : "hover:bg-muted"
-              }`}
-            >
-              {item}
-            </Link>
+            isCurrentPage ? (
+              <span
+                key={item}
+                aria-current="page"
+                className="inline-flex h-10 min-w-10 items-center justify-center rounded-lg border border-primary bg-primary px-3 text-sm font-semibold text-primary-foreground"
+              >
+                {item}
+              </span>
+            ) : (
+              <Link
+                key={item}
+                href={buildProductCatalogueUrl({
+                  ...query,
+                  page: item,
+                })}
+                onClick={
+                  handlePaginationClick
+                }
+                aria-label={`Go to product page ${item}`}
+                className="inline-flex h-10 min-w-10 items-center justify-center rounded-lg border border-white/10 bg-white/[0.025] px-3 text-sm font-medium text-foreground outline-none transition-colors hover:border-primary/45 hover:bg-primary/[0.055] focus-visible:ring-2 focus-visible:ring-primary/60 focus-visible:ring-offset-2 focus-visible:ring-offset-background motion-reduce:transition-none"
+              >
+                {item}
+              </Link>
+            )
           );
         },
-      )}
+        )}
 
-      {pagination.hasNextPage ? (
+        {pagination.hasNextPage ? (
         <Link
           href={buildProductCatalogueUrl({
             ...query,
@@ -194,10 +310,15 @@ export default function ProductPagination({
               pagination.page +
               1,
           })}
+          onClick={
+            handlePaginationClick
+          }
           aria-label="Go to next product page"
-          className="inline-flex h-10 items-center gap-2 rounded-lg border px-3 text-sm font-medium transition hover:bg-muted"
+          className={
+            navigationClassName
+          }
         >
-          <span className="hidden sm:inline">
+          <span>
             Next
           </span>
 
@@ -206,15 +327,18 @@ export default function ProductPagination({
       ) : (
         <span
           aria-disabled="true"
-          className="inline-flex h-10 cursor-not-allowed items-center gap-2 rounded-lg border px-3 text-sm font-medium text-muted-foreground opacity-50"
+          className={
+            disabledNavigationClassName
+          }
         >
-          <span className="hidden sm:inline">
+          <span>
             Next
           </span>
 
           <ChevronRight className="h-4 w-4" />
         </span>
-      )}
+        )}
+      </div>
     </nav>
   );
 }

@@ -64,6 +64,28 @@ export default function ProductCatalog({
         ),
     );
 
+  const selectedCategoryLabel =
+    categories
+      .find(
+        (category) =>
+          category.value ===
+          query.category,
+      )
+      ?.label.replace(
+        /\s+\(\d+\)$/,
+        "",
+      );
+
+  const emptyStateDescription =
+    query.search &&
+    selectedCategoryLabel
+      ? `No products matched “${query.search}” in ${selectedCategoryLabel}. Try a different search or category.`
+      : query.search
+        ? `No products matched “${query.search}”. Try a broader product name, brand, or SKU.`
+        : selectedCategoryLabel
+          ? `There are no products available in ${selectedCategoryLabel} for the current filters.`
+          : "No products match the current filters. Try adjusting or clearing them.";
+
   return (
     <div className="mt-10">
       <div className="rounded-2xl border border-white/8 bg-[#101316]/70 p-4 shadow-[0_12px_40px_rgba(0,0,0,0.18)] sm:p-5">
@@ -89,40 +111,45 @@ export default function ProductCatalog({
         />
       </div>
 
-      <div className="mt-7 flex flex-col gap-4 border-y border-white/8 py-5 sm:flex-row sm:items-center sm:justify-between">
-        <div className="flex items-center gap-2 text-sm text-muted-foreground">
-          <SlidersHorizontal className="size-4 text-primary" />
+      <div
+        id="product-results"
+        className="mt-7 scroll-mt-24 border-y border-white/8 py-5"
+      >
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex items-center gap-2 text-sm text-muted-foreground">
+            <SlidersHorizontal className="size-4 text-primary" />
 
-          <span>
-            <strong className="font-semibold text-foreground">
-              {
-                pagination.totalItems
+            <span>
+              <strong className="font-semibold text-foreground">
+                {
+                  pagination.totalItems
+                }
+              </strong>{" "}
+              {pagination.totalItems ===
+              1
+                ? "product"
+                : "products"}{" "}
+              found
+            </span>
+          </div>
+
+          <div className="flex w-full flex-col gap-3 min-[420px]:flex-row min-[420px]:items-center sm:w-auto sm:gap-4">
+            {filtersAreActive && (
+              <Link
+                href="/products"
+                className="w-fit rounded-md text-sm font-semibold text-primary outline-none transition-colors hover:text-primary/80 focus-visible:ring-2 focus-visible:ring-primary/60 focus-visible:ring-offset-2 focus-visible:ring-offset-background motion-reduce:transition-none"
+              >
+                Clear filters
+              </Link>
+            )}
+
+            <ProductSort
+              value={
+                query.sort ??
+                "featured"
               }
-            </strong>{" "}
-            {pagination.totalItems ===
-            1
-              ? "product"
-              : "products"}{" "}
-            found
-          </span>
-        </div>
-
-        <div className="flex flex-wrap items-center gap-4">
-          {filtersAreActive && (
-            <Link
-              href="/products"
-              className="text-sm font-semibold text-primary transition-colors hover:text-primary/80"
-            >
-              Clear filters
-            </Link>
-          )}
-
-          <ProductSort
-            value={
-              query.sort ??
-              "featured"
-            }
-          />
+            />
+          </div>
         </div>
       </div>
 
@@ -164,10 +191,9 @@ export default function ProductCatalog({
           </h2>
 
           <p className="mx-auto mt-3 max-w-md text-sm leading-6 text-muted-foreground">
-            We couldn&apos;t find
-            products matching those
-            filters. Try another
-            category or search term.
+            {
+              emptyStateDescription
+            }
           </p>
 
           <Link
@@ -179,7 +205,7 @@ export default function ProductCatalog({
                 size:
                   "lg",
               }),
-              "mt-7",
+              "mt-7 outline-none focus-visible:ring-2 focus-visible:ring-primary/60 focus-visible:ring-offset-2 focus-visible:ring-offset-background",
             )}
           >
             Clear all filters

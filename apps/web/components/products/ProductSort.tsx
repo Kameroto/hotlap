@@ -67,7 +67,7 @@ export default function ProductSort({
   }
 
   return (
-    <div className="flex items-center gap-3">
+    <div className="flex w-full items-center gap-3 sm:w-auto">
       <label
         htmlFor="product-sort"
         className="text-sm font-medium"
@@ -86,7 +86,7 @@ export default function ProductSort({
               .value as ProductSortOption,
           )
         }
-        className="h-10 rounded-lg border bg-background px-3 text-sm outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/20"
+        className="h-10 min-w-0 flex-1 rounded-lg border border-white/10 bg-[#0b0e11] px-3 text-sm text-foreground outline-none transition-colors focus-visible:border-primary/70 focus-visible:ring-2 focus-visible:ring-primary/30 motion-reduce:transition-none sm:min-w-52"
       >
         {sortOptions.map(
           (option) => (

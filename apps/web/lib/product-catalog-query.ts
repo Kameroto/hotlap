@@ -132,6 +132,79 @@ export function parseProductCatalogueQuery(
   };
 }
 
+export function productCatalogueQueryIsCanonical(
+  searchParams: ProductSearchParams,
+  query: ProductCatalogueQuery,
+): boolean {
+  const supportedKeys =
+    new Set([
+      "search",
+      "category",
+      "sort",
+      "page",
+    ]);
+
+  if (
+    Object.keys(
+      searchParams,
+    ).some(
+      (key) =>
+        !supportedKeys.has(
+          key,
+        ),
+    )
+  ) {
+    return false;
+  }
+
+  const expectedValues: Record<
+    string,
+    string | undefined
+  > = {
+    search:
+      query.search,
+
+    category:
+      query.category,
+
+    sort:
+      query.sort &&
+      query.sort !==
+        DEFAULT_PRODUCT_SORT
+        ? query.sort
+        : undefined,
+
+    page:
+      query.page &&
+      query.page >
+        DEFAULT_PRODUCT_PAGE
+        ? String(query.page)
+        : undefined,
+  };
+
+  return Object.entries(
+    expectedValues,
+  ).every(
+    ([key, expectedValue]) => {
+      const rawValue =
+        searchParams[key];
+
+      if (
+        Array.isArray(rawValue)
+      ) {
+        return false;
+      }
+
+      return expectedValue ===
+        undefined
+        ? rawValue ===
+            undefined
+        : rawValue ===
+            expectedValue;
+    },
+  );
+}
+
 export function buildProductCatalogueUrl({
   search,
   category,
