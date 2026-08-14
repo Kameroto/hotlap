@@ -22,10 +22,6 @@ import {
   type LucideIcon,
 } from "lucide-react";
 
-import {
-  toast,
-} from "sonner";
-
 import AddToCartButton from "@/components/cart/AddToCartButton";
 import ProductImage from "@/components/products/ProductImage";
 import ProductAvailability from "@/components/products/ProductAvailability";
@@ -37,20 +33,12 @@ import {
 } from "@/components/ui/button";
 
 import {
-  ApiClientError,
-} from "@/lib/api/client";
+  useWishlistAction,
+} from "@/hooks/use-wishlist-action";
 
 import {
   cn,
 } from "@/lib/utils";
-
-import {
-  useAuthStore,
-} from "@/store/auth-store";
-
-import {
-  useWishlistStore,
-} from "@/store/wishlist-store";
 
 import type {
   Product,
@@ -248,35 +236,20 @@ function getDisplaySpecifications(
 export default function ProductCard({
   product,
 }: ProductCardProps) {
-  const authStatus =
-    useAuthStore(
-      (state) =>
-        state.status,
-    );
-
-  const wishlistItems =
-    useWishlistStore(
-      (state) =>
-        state.items,
-    );
-
-  const wishlistHasHydrated =
-    useWishlistStore(
-      (state) =>
-        state.hasHydrated,
-    );
-
-  const wishlistIsLoading =
-    useWishlistStore(
-      (state) =>
-        state.isLoading,
-    );
-
-  const toggleWishlist =
-    useWishlistStore(
-      (state) =>
-        state.toggleWishlist,
-    );
+  const {
+    isSaved:
+      productIsInWishlist,
+    isPending:
+      wishlistIsPending,
+    isDisabled:
+      wishlistIsDisabled,
+    toggle:
+      toggleWishlist,
+  } = useWishlistAction({
+    productId: product.id,
+    productName: product.name,
+    productSlug: product.slug,
+  });
 
   const primaryImage =
     product.images.find(
@@ -285,82 +258,10 @@ export default function ProductCard({
     ) ??
     product.images[0];
 
-  const productIsInWishlist =
-    wishlistItems.some(
-      (item) =>
-        item.product.id ===
-        product.id,
-    );
-
   const specifications =
     getDisplaySpecifications(
       product,
     );
-
-  async function handleWishlistToggle() {
-    if (
-      authStatus !==
-      "authenticated"
-    ) {
-      toast.info(
-        "Sign in to save products to your wishlist.",
-        {
-          action: {
-            label:
-              "Sign In",
-
-            onClick: () => {
-              window.location.href =
-                "/login";
-            },
-          },
-        },
-      );
-
-      return;
-    }
-
-    try {
-      await toggleWishlist(
-        product.id,
-      );
-
-      if (
-        productIsInWishlist
-      ) {
-        toast.info(
-          `${product.name} removed from your wishlist.`,
-        );
-
-        return;
-      }
-
-      toast.success(
-        `${product.name} saved to your wishlist.`,
-        {
-          action: {
-            label:
-              "View Wishlist",
-
-            onClick: () => {
-              window.location.href =
-                "/wishlist";
-            },
-          },
-        },
-      );
-    } catch (error) {
-      const message =
-        error instanceof
-        ApiClientError
-          ? error.message
-          : "Unable to update your wishlist.";
-
-      toast.error(
-        message,
-      );
-    }
-  }
 
   return (
     <article className="group relative flex h-full flex-col overflow-hidden rounded-2xl border border-white/10 bg-[#101316] text-card-foreground shadow-[0_14px_45px_rgba(0,0,0,0.24)] transition-all duration-500 hover:-translate-y-1 hover:border-primary/35 hover:shadow-[0_24px_65px_rgba(0,0,0,0.42)]">
@@ -391,8 +292,7 @@ export default function ProductCard({
           variant="outline"
           size="icon"
           disabled={
-            !wishlistHasHydrated ||
-            wishlistIsLoading
+            wishlistIsDisabled
           }
           aria-label={
             productIsInWishlist
@@ -402,8 +302,11 @@ export default function ProductCard({
           aria-pressed={
             productIsInWishlist
           }
+          aria-busy={
+            wishlistIsPending
+          }
           onClick={() => {
-            void handleWishlistToggle();
+            void toggleWishlist();
           }}
           className={cn(
             "absolute top-4 right-4 z-10 rounded-full border-white/12 bg-black/55 shadow-lg backdrop-blur-xl",
@@ -413,8 +316,8 @@ export default function ProductCard({
               : "text-muted-foreground hover:border-primary/40 hover:bg-black/75 hover:text-primary",
           )}
         >
-          {wishlistIsLoading ? (
-            <LoaderCircle className="size-4 animate-spin" />
+          {wishlistIsPending ? (
+            <LoaderCircle className="size-4 animate-spin motion-reduce:animate-none" />
           ) : (
             <Heart
               className={cn(

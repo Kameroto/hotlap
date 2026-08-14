@@ -10,10 +10,6 @@ import {
   ShoppingCart,
 } from "lucide-react";
 
-import {
-  toast,
-} from "sonner";
-
 import AddToCartButton from "@/components/cart/AddToCartButton";
 import BuyNowButton from "@/components/cart/BuyNowButton";
 import ProductAvailability from "@/components/products/ProductAvailability";
@@ -27,20 +23,12 @@ import {
 } from "@/components/ui/button";
 
 import {
-  ApiClientError,
-} from "@/lib/api/client";
+  useWishlistAction,
+} from "@/hooks/use-wishlist-action";
 
 import {
   cn,
 } from "@/lib/utils";
-
-import {
-  useAuthStore,
-} from "@/store/auth-store";
-
-import {
-  useWishlistStore,
-} from "@/store/wishlist-store";
 
 import type {
   Product,
@@ -53,90 +41,20 @@ type ProductPurchasePanelProps = {
 export default function ProductPurchasePanel({
   product,
 }: ProductPurchasePanelProps) {
-  const authStatus =
-    useAuthStore(
-      (state) =>
-        state.status,
-    );
-
-  const wishlistItems =
-    useWishlistStore(
-      (state) =>
-        state.items,
-    );
-
-  const wishlistHasHydrated =
-    useWishlistStore(
-      (state) =>
-        state.hasHydrated,
-    );
-
-  const wishlistIsLoading =
-    useWishlistStore(
-      (state) =>
-        state.isLoading,
-    );
-
-  const toggleWishlist =
-    useWishlistStore(
-      (state) =>
-        state.toggleWishlist,
-    );
-
-  const productIsInWishlist =
-    wishlistItems.some(
-      (item) =>
-        item.product.id ===
-        product.id,
-    );
-
-  async function handleWishlistToggle() {
-    if (
-      authStatus !==
-      "authenticated"
-    ) {
-      toast.info(
-        "Sign in to save products to your wishlist.",
-        {
-          action: {
-            label:
-              "Sign In",
-
-            onClick: () => {
-              window.location.href =
-                `/login?next=${encodeURIComponent(
-                  `/products/${product.slug}`,
-                )}`;
-            },
-          },
-        },
-      );
-
-      return;
-    }
-
-    try {
-      await toggleWishlist(
-        product.id,
-      );
-
-      toast.success(
-        productIsInWishlist
-          ? `${product.name} removed from your wishlist.`
-          : `${product.name} saved to your wishlist.`,
-      );
-    } catch (error) {
-      const message =
-        error instanceof
-        ApiClientError
-          ? error.message
-          : "Unable to update your wishlist.";
-
-      toast.error(
-        message,
-      );
-    }
-  }
+  const {
+    isSaved:
+      productIsInWishlist,
+    isPending:
+      wishlistIsPending,
+    isDisabled:
+      wishlistIsDisabled,
+    toggle:
+      toggleWishlist,
+  } = useWishlistAction({
+    productId: product.id,
+    productName: product.name,
+    productSlug: product.slug,
+  });
 
   return (
     <div className="lg:sticky lg:top-28">
@@ -274,14 +192,16 @@ export default function ProductPurchasePanel({
             variant="outline"
             size="xl"
             disabled={
-              !wishlistHasHydrated ||
-              wishlistIsLoading
+              wishlistIsDisabled
             }
             onClick={() => {
-              void handleWishlistToggle();
+              void toggleWishlist();
             }}
             aria-pressed={
               productIsInWishlist
+            }
+            aria-busy={
+              wishlistIsPending
             }
             aria-label={
               productIsInWishlist
@@ -295,8 +215,8 @@ export default function ProductPurchasePanel({
                 "border-primary/50 bg-primary/8 text-primary",
             )}
           >
-            {wishlistIsLoading ? (
-              <LoaderCircle className="size-5 animate-spin" />
+            {wishlistIsPending ? (
+              <LoaderCircle className="size-5 animate-spin motion-reduce:animate-none" />
             ) : (
               <Heart
                 className={cn(
