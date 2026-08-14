@@ -16,10 +16,17 @@ import Container from "@/components/layout/Container";
 import Section from "@/components/layout/Section";
 
 import ProductGallery from "@/components/products/ProductGallery";
+import ProductFaq from "@/components/products/ProductFaq";
+import MobilePurchaseBar from "@/components/products/MobilePurchaseBar";
 import ProductPurchasePanel from "@/components/products/ProductPurchasePanel";
+import ProductRecommendations from "@/components/products/ProductRecommendations";
+import ProductReviews from "@/components/products/ProductReviews";
+import RecentlyViewedProducts from "@/components/products/RecentlyViewedProducts";
+import RecentlyViewedTracker from "@/components/products/RecentlyViewedTracker";
 
 import {
   findProductBySlug,
+  getRelatedProducts,
 } from "@/lib/products";
 
 type ProductDetailsPageProps = {
@@ -73,8 +80,19 @@ export default async function ProductDetailsPage({
     notFound();
   }
 
+  const relatedProducts =
+    await getRelatedProducts(
+      product,
+    );
+
   return (
-    <main className="overflow-hidden bg-[#080a0c]">
+    <main className="overflow-hidden bg-[#080a0c] pb-[calc(8.5rem+env(safe-area-inset-bottom))] md:pb-0">
+      <RecentlyViewedTracker
+        productSlug={
+          product.slug
+        }
+      />
+
       <section className="relative border-b border-white/8">
         <div className="pointer-events-none absolute inset-0">
           <div className="absolute top-0 left-[20%] size-[460px] rounded-full bg-primary/[0.035] blur-[140px]" />
@@ -220,8 +238,40 @@ export default async function ProductDetailsPage({
               </div>
             )}
           </div>
+
+          <ProductReviews
+            ratingAverage={
+              product.ratingAverage
+            }
+            reviewCount={
+              product.reviewCount
+            }
+          />
+
+          <ProductFaq />
+
+          <ProductRecommendations
+            eyebrow="Explore More"
+            title="Related Products."
+            description={`More from ${product.category.name}, supplemented with standout products from the wider HotLap catalogue.`}
+            products={
+              relatedProducts
+            }
+          />
+
+          <RecentlyViewedProducts
+            currentProductSlug={
+              product.slug
+            }
+          />
         </Container>
       </Section>
+
+      <MobilePurchaseBar
+        product={
+          product
+        }
+      />
     </main>
   );
 }

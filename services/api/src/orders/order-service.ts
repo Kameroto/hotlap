@@ -501,6 +501,200 @@ export async function createOrder({
     });
   }
 
+  const resolvedAddress =
+    await getDeliveryAddress({
+      userId,
+
+      addressId:
+        information.addressId,
+
+      deliveryAddress:
+        information.deliveryAddress,
+    });
+
+  if (information.directPurchase) {
+    const directPurchase =
+      information.directPurchase;
+
+    const createdOrder =
+      await prisma.$transaction(
+        async (transaction) => {
+          const product =
+            await transaction.product.findUnique({
+              where: {
+                id:
+                  directPurchase.productId,
+              },
+            });
+
+          if (
+            !product ||
+            product.status !==
+              ProductStatus.ACTIVE
+          ) {
+            throw new ApiError({
+              statusCode: 409,
+              code:
+                "PRODUCT_UNAVAILABLE",
+              message:
+                "The selected product is no longer available.",
+            });
+          }
+
+          if (
+            product.stockQuantity <
+            directPurchase.quantity
+          ) {
+            throw new ApiError({
+              statusCode: 409,
+              code:
+                "INSUFFICIENT_STOCK",
+              message:
+                `${product.name} is currently unavailable.`,
+            });
+          }
+
+          const subtotal =
+            roundCurrency(
+              product.price.toNumber() *
+                directPurchase.quantity,
+            );
+
+          const shippingCost =
+            getShippingCost(
+              information.shippingMethod,
+              subtotal,
+            );
+
+          const taxAmount = 0;
+
+          const total =
+            roundCurrency(
+              subtotal +
+                shippingCost +
+                taxAmount,
+            );
+
+          const inventoryUpdate =
+            await transaction.product.updateMany({
+              where: {
+                id: product.id,
+                status:
+                  ProductStatus.ACTIVE,
+                stockQuantity: {
+                  gte:
+                    directPurchase.quantity,
+                },
+              },
+
+              data: {
+                stockQuantity: {
+                  decrement:
+                    directPurchase.quantity,
+                },
+              },
+            });
+
+          if (
+            inventoryUpdate.count !==
+            1
+          ) {
+            throw new ApiError({
+              statusCode: 409,
+              code:
+                "INSUFFICIENT_STOCK",
+              message:
+                `${product.name} is currently unavailable.`,
+            });
+          }
+
+          return transaction.order.create({
+            data: {
+              orderNumber:
+                createOrderNumber(),
+
+              userId,
+
+              addressId:
+                resolvedAddress.addressId,
+
+              couponId: null,
+
+              status:
+                OrderStatus.CONFIRMED,
+
+              paymentStatus:
+                PaymentStatus.PENDING,
+
+              paymentMethod:
+                information.paymentMethod,
+
+              shippingMethod:
+                information.shippingMethod,
+
+              customerEmail:
+                user.email,
+
+              customerPhone:
+                resolvedAddress.address
+                  .phone,
+
+              customerName:
+                resolvedAddress.address
+                  .recipientName,
+
+              deliveryAddress:
+                resolvedAddress.address,
+
+              subtotal,
+              discountAmount: 0,
+              shippingCost,
+              taxAmount,
+              total,
+
+              notes:
+                information.notes ??
+                null,
+
+              confirmedAt:
+                new Date(),
+
+              items: {
+                create: {
+                  productId:
+                    product.id,
+
+                  productName:
+                    product.name,
+
+                  productSlug:
+                    product.slug,
+
+                  sku:
+                    product.sku,
+
+                  quantity:
+                    directPurchase.quantity,
+
+                  unitPrice:
+                    product.price,
+
+                  lineTotal:
+                    subtotal,
+                },
+              },
+            },
+          });
+        },
+      );
+
+    return getOrderDetails({
+      userId,
+      orderId:
+        createdOrder.id,
+    });
+  }
+
   const cart =
     await prisma.cart.findFirst({
       where: {
@@ -534,17 +728,6 @@ export async function createOrder({
         "Add products before placing an order.",
     });
   }
-
-  const resolvedAddress =
-    await getDeliveryAddress({
-      userId,
-
-      addressId:
-        information.addressId,
-
-      deliveryAddress:
-        information.deliveryAddress,
-    });
 
   const shippingCost =
     getShippingCost(

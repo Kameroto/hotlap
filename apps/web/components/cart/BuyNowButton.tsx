@@ -1,9 +1,7 @@
 "use client";
 
 import {
-  Check,
-  LoaderCircle,
-  ShoppingCart,
+  ArrowRight,
 } from "lucide-react";
 
 import {
@@ -24,10 +22,6 @@ import {
 } from "@/hooks/use-product-purchase-state";
 
 import {
-  ApiClientError,
-} from "@/lib/api/client";
-
-import {
   getProductPurchaseState,
 } from "@/lib/product-purchase-state";
 
@@ -35,24 +29,27 @@ import {
   useCartStore,
 } from "@/store/cart-store";
 
-type AddToCartButtonProps = {
+type BuyNowButtonProps = {
   productId: string;
+  productSlug: string;
   productName: string;
   stockQuantity: number;
   className?: string;
   size?:
     | "default"
     | "sm"
-    | "lg";
+    | "lg"
+    | "xl";
 };
 
-export default function AddToCartButton({
+export default function BuyNowButton({
   productId,
+  productSlug,
   productName,
   stockQuantity,
   className,
   size = "default",
-}: AddToCartButtonProps) {
+}: BuyNowButtonProps) {
   const actionIsInFlight =
     useRef(false);
 
@@ -61,35 +58,16 @@ export default function AddToCartButton({
     setActionIsPending,
   ] = useState(false);
 
-  const cart =
-    useCartStore(
-      (state) =>
-        state.cart,
-    );
-
   const hasHydrated =
     useCartStore(
       (state) =>
         state.hasHydrated,
     );
 
-  const isLoading =
+  const cartIsLoading =
     useCartStore(
       (state) =>
         state.isLoading,
-    );
-
-  const addItem =
-    useCartStore(
-      (state) =>
-        state.addItem,
-    );
-
-  const cartItem =
-    cart?.items.find(
-      (item) =>
-        item.product.id ===
-        productId,
     );
 
   const purchaseState =
@@ -98,10 +76,7 @@ export default function AddToCartButton({
       stockQuantity,
     });
 
-  const isInCart =
-    Boolean(cartItem);
-
-  async function handleAddToCart() {
+  function handleBuyNow() {
     if (
       actionIsInFlight.current
     ) {
@@ -134,20 +109,12 @@ export default function AddToCartButton({
       });
 
     if (
-      currentPurchaseState.isOutOfStock
-    ) {
-      toast.error(
-        `${productName} is currently unavailable.`,
-      );
-
-      return;
-    }
-
-    if (
-      currentPurchaseState.hasReachedStockLimit
+      !currentPurchaseState.canAddToCart
     ) {
       toast.warning(
-        `Only ${stockQuantity} units of ${productName} are available.`,
+        currentPurchaseState.isOutOfStock
+          ? `${productName} is currently unavailable.`
+          : `Only ${stockQuantity} units of ${productName} are available.`,
       );
 
       return;
@@ -157,41 +124,11 @@ export default function AddToCartButton({
       true;
     setActionIsPending(true);
 
-    try {
-      await addItem(
-        productId,
-        1,
-      );
-
-      toast.success(
-        `${productName} added to your cart.`,
-        {
-          action: {
-            label:
-              "View Cart",
-
-            onClick: () => {
-              window.location.href =
-                "/cart";
-            },
-          },
-        },
-      );
-    } catch (error) {
-      const message =
-        error instanceof
-        ApiClientError
-          ? error.message
-          : "Unable to add this product to your cart.";
-
-      toast.error(
-        message,
-      );
-    } finally {
-      actionIsInFlight.current =
-        false;
-      setActionIsPending(false);
-    }
+    window.location.assign(
+      `/checkout?buyNow=${encodeURIComponent(
+        productSlug,
+      )}`,
+    );
   }
 
   return (
@@ -200,35 +137,29 @@ export default function AddToCartButton({
       size={size}
       disabled={
         !hasHydrated ||
-        isLoading ||
+        cartIsLoading ||
         actionIsPending ||
         !purchaseState.canAddToCart
       }
       onClick={() => {
-        void handleAddToCart();
+        void handleBuyNow();
       }}
-      aria-label={`Add ${productName} to cart`}
+      aria-label={`Buy ${productName} now`}
       className={
         className
       }
     >
-      {isLoading || actionIsPending ? (
-        <LoaderCircle className="h-4 w-4 animate-spin motion-reduce:animate-none" />
-      ) : isInCart ? (
-        <Check className="h-4 w-4" />
-      ) : (
-        <ShoppingCart className="h-4 w-4" />
-      )}
+      <ArrowRight className="size-4 transition-transform duration-300 motion-reduce:transition-none group-hover/button:translate-x-1" />
 
       {purchaseState.isOutOfStock
         ? "Unavailable"
         : purchaseState.hasReachedStockLimit
           ? "Stock Limit Reached"
-          : isLoading || actionIsPending
-            ? "Updating..."
-            : isInCart
-              ? `In Cart (${cartItem?.quantity ?? 0})`
-              : "Add to Cart"}
+          : actionIsPending
+            ? "Opening..."
+            : cartIsLoading
+              ? "Updating..."
+            : "Buy Now"}
     </Button>
   );
 }

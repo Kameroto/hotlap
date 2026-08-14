@@ -65,6 +65,19 @@ export const deliveryAddressSchema =
 
 export const createOrderBodySchema =
   z.object({
+    directPurchase: z
+      .object({
+        productId: z
+          .string()
+          .uuid(
+            "A valid product ID is required.",
+          ),
+
+        quantity: z
+          .literal(1),
+      })
+      .optional(),
+
     addressId: z
       .string()
       .uuid(

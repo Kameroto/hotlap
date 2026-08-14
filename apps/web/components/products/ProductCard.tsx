@@ -6,7 +6,6 @@ import {
   BatteryCharging,
   Box,
   CarFront,
-  CircleGauge,
   Cog,
   FlaskConical,
   Gauge,
@@ -29,6 +28,7 @@ import {
 
 import AddToCartButton from "@/components/cart/AddToCartButton";
 import ProductImage from "@/components/products/ProductImage";
+import ProductAvailability from "@/components/products/ProductAvailability";
 import ProductPrice from "@/components/products/ProductPrice";
 import ProductRating from "@/components/products/ProductRating";
 
@@ -538,9 +538,15 @@ export default function ProductCard({
                 currency="INR"
               />
 
-              <StockStatus
-                product={
-                  product
+              <ProductAvailability
+                productId={
+                  product.id
+                }
+                stockQuantity={
+                  product.stockQuantity
+                }
+                lowStockThreshold={
+                  product.lowStockThreshold
                 }
               />
             </div>
@@ -561,47 +567,5 @@ export default function ProductCard({
         </div>
       </div>
     </article>
-  );
-}
-
-function StockStatus({
-  product,
-}: {
-  product: Product;
-}) {
-  if (
-    !product.isInStock
-  ) {
-    return (
-      <span className="shrink-0 rounded-full border border-destructive/25 bg-destructive/10 px-2.5 py-1 text-[0.68rem] font-bold text-destructive">
-        Out of stock
-      </span>
-    );
-  }
-
-  const isLowStock =
-    product.stockQuantity <=
-    product.lowStockThreshold;
-
-  if (
-    isLowStock
-  ) {
-    return (
-      <span className="shrink-0 rounded-full border border-amber-500/25 bg-amber-500/10 px-2.5 py-1 text-[0.68rem] font-bold text-amber-400">
-        Only{" "}
-        {
-          product.stockQuantity
-        }{" "}
-        left
-      </span>
-    );
-  }
-
-  return (
-    <span className="inline-flex shrink-0 items-center gap-1.5 text-[0.68rem] font-semibold text-emerald-400">
-      <CircleGauge className="size-3.5" />
-
-      In stock
-    </span>
   );
 }

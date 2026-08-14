@@ -39,6 +39,10 @@ import {
   ApiClientError,
 } from "@/lib/api/client";
 
+import type {
+  ServerCartItem,
+} from "@/lib/api/types";
+
 import {
   createOrder,
 } from "@/lib/api/orders";
@@ -64,6 +68,10 @@ import {
 import {
   useCartStore,
 } from "@/store/cart-store";
+
+import type {
+  Product,
+} from "@/types/product";
 
 const indianStates = [
   "Andhra Pradesh",
@@ -124,7 +132,17 @@ function FieldErrorMessage({
   );
 }
 
-export default function CheckoutForm() {
+type CheckoutFormProps = {
+  directCheckoutRequested?: boolean;
+  directProduct?:
+    | Product
+    | null;
+};
+
+export default function CheckoutForm({
+  directCheckoutRequested = false,
+  directProduct = null,
+}: CheckoutFormProps) {
   const router =
     useRouter();
 
@@ -209,9 +227,30 @@ export default function CheckoutForm() {
     },
   });
 
+  const directCheckoutIsValid =
+    directCheckoutRequested &&
+    directProduct !== null &&
+    directProduct.isInStock;
+
+  const directCheckoutItems:
+    ServerCartItem[] =
+    directCheckoutIsValid
+      ? [
+          {
+            id: `direct-${directProduct.id}`,
+            quantity: 1,
+            lineTotal:
+              directProduct.price,
+            product:
+              directProduct,
+          },
+        ]
+      : [];
+
   if (
     authStatus === "loading" ||
-    !cartHasHydrated
+    (!directCheckoutRequested &&
+      !cartHasHydrated)
   ) {
     return (
       <Container>
@@ -247,7 +286,11 @@ export default function CheckoutForm() {
           </p>
 
           <Link
-            href="/login"
+            href={
+              directCheckoutIsValid
+                ? `/login?next=${encodeURIComponent(`/checkout?buyNow=${directProduct.slug}`)}`
+                : "/login?next=%2Fcheckout"
+            }
             className={cn(
               buttonVariants({
                 size: "lg",
@@ -263,8 +306,46 @@ export default function CheckoutForm() {
   }
 
   if (
-    !cart ||
-    cart.items.length === 0
+    directCheckoutRequested &&
+    !directCheckoutIsValid
+  ) {
+    return (
+      <Container>
+        <div className="mx-auto max-w-xl rounded-3xl border border-dashed px-6 py-16 text-center">
+          <ShoppingBag className="mx-auto h-9 w-9 text-muted-foreground" />
+
+          <h1 className="mt-5 text-3xl font-bold">
+            Product unavailable
+          </h1>
+
+          <p className="mt-3 text-muted-foreground">
+            This direct checkout link
+            is invalid or the selected
+            product is no longer
+            available. Your cart has
+            not been changed.
+          </p>
+
+          <Link
+            href="/products"
+            className={cn(
+              buttonVariants({
+                size: "lg",
+              }),
+              "mt-7",
+            )}
+          >
+            Browse Products
+          </Link>
+        </div>
+      </Container>
+    );
+  }
+
+  if (
+    !directCheckoutIsValid &&
+    (!cart ||
+      cart.items.length === 0)
   ) {
     return (
       <Container>
@@ -296,14 +377,44 @@ export default function CheckoutForm() {
     );
   }
 
+  const checkoutItems =
+    directCheckoutIsValid
+      ? directCheckoutItems
+      : cart?.items ?? [];
+
+  const checkoutSubtotal =
+    directCheckoutIsValid
+      ? directProduct.price
+      : cart?.subtotal ?? 0;
+
+  const checkoutDiscountAmount =
+    directCheckoutIsValid
+      ? 0
+      : cart?.discountAmount ??
+        0;
+
+  const checkoutPromotionCode =
+    directCheckoutIsValid
+      ? null
+      : cart?.coupon?.isValid
+        ? cart.coupon.code
+        : null;
+
+  const checkoutTotalBeforeShipping =
+    directCheckoutIsValid
+      ? checkoutSubtotal
+      : cart
+          ?.totalBeforeShipping ??
+        checkoutSubtotal;
+
   const shippingMethod =
     getShippingMethod(
       selectedShippingMethod,
-      cart.subtotal,
+      checkoutSubtotal,
     );
 
   const total =
-    cart.totalBeforeShipping +
+    checkoutTotalBeforeShipping +
     shippingMethod.cost;
 
   async function submitCheckout(
@@ -312,6 +423,15 @@ export default function CheckoutForm() {
     try {
       const response =
         await createOrder({
+          directPurchase:
+            directCheckoutIsValid
+              ? {
+                  productId:
+                    directProduct.id,
+                  quantity: 1,
+                }
+              : undefined,
+
           deliveryAddress: {
             recipientName:
               `${values.firstName.trim()} ${values.lastName.trim()}`,
@@ -353,7 +473,11 @@ export default function CheckoutForm() {
             null,
         });
 
-      await refreshCart();
+      if (
+        !directCheckoutIsValid
+      ) {
+        await refreshCart();
+      }
 
       toast.success(
         `Order ${response.order.orderNumber} placed successfully.`,
@@ -673,7 +797,7 @@ export default function CheckoutForm() {
 
             <ShippingMethodSelector
               subtotal={
-                cart.subtotal
+                checkoutSubtotal
               }
               selectedMethod={
                 selectedShippingMethod
@@ -722,19 +846,16 @@ export default function CheckoutForm() {
 
           <CheckoutOrderSummary
             items={
-              cart.items
+              checkoutItems
             }
             subtotal={
-              cart.subtotal
+              checkoutSubtotal
             }
             discountAmount={
-              cart.discountAmount
+              checkoutDiscountAmount
             }
             promotionCode={
-              cart.coupon
-                ?.isValid
-                ? cart.coupon.code
-                : null
+              checkoutPromotionCode
             }
             shippingCost={
               shippingMethod.cost

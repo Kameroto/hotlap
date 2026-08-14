@@ -3,7 +3,6 @@
 import Link from "next/link";
 
 import {
-  ArrowRight,
   Heart,
   LoaderCircle,
   PackageCheck,
@@ -16,10 +15,12 @@ import {
 } from "sonner";
 
 import AddToCartButton from "@/components/cart/AddToCartButton";
+import BuyNowButton from "@/components/cart/BuyNowButton";
 import ProductAvailability from "@/components/products/ProductAvailability";
 import ProductPrice from "@/components/products/ProductPrice";
 import ProductQuickSpecs from "@/components/products/ProductQuickSpecs";
 import ProductRating from "@/components/products/ProductRating";
+import ProductShareButton from "@/components/products/ProductShareButton";
 
 import {
   Button,
@@ -36,10 +37,6 @@ import {
 import {
   useAuthStore,
 } from "@/store/auth-store";
-
-import {
-  useCartStore,
-} from "@/store/cart-store";
 
 import {
   useWishlistStore,
@@ -86,55 +83,12 @@ export default function ProductPurchasePanel({
         state.toggleWishlist,
     );
 
-  const cart =
-    useCartStore(
-      (state) =>
-        state.cart,
-    );
-
-  const cartHasHydrated =
-    useCartStore(
-      (state) =>
-        state.hasHydrated,
-    );
-
-  const cartIsLoading =
-    useCartStore(
-      (state) =>
-        state.isLoading,
-    );
-
-  const addItem =
-    useCartStore(
-      (state) =>
-        state.addItem,
-    );
-
   const productIsInWishlist =
     wishlistItems.some(
       (item) =>
         item.product.id ===
         product.id,
     );
-
-  const cartItem =
-    cart?.items.find(
-      (item) =>
-        item.product.id ===
-        product.id,
-    );
-
-  const hasReachedStockLimit =
-    cartItem !==
-      undefined &&
-    cartItem.quantity >=
-      product.stockQuantity;
-
-  const purchaseIsDisabled =
-    !cartHasHydrated ||
-    cartIsLoading ||
-    !product.isInStock ||
-    hasReachedStockLimit;
 
   async function handleWishlistToggle() {
     if (
@@ -184,34 +138,6 @@ export default function ProductPurchasePanel({
     }
   }
 
-  async function handleBuyNow() {
-    if (
-      purchaseIsDisabled
-    ) {
-      return;
-    }
-
-    try {
-      await addItem(
-        product.id,
-        1,
-      );
-
-      window.location.href =
-        "/checkout";
-    } catch (error) {
-      const message =
-        error instanceof
-        ApiClientError
-          ? error.message
-          : "Unable to continue to checkout.";
-
-      toast.error(
-        message,
-      );
-    }
-  }
-
   return (
     <div className="lg:sticky lg:top-28">
       <div className="rounded-2xl border border-white/10 bg-[#101316] p-5 shadow-[0_24px_70px_rgba(0,0,0,0.3)] sm:p-7">
@@ -250,6 +176,9 @@ export default function ProductPurchasePanel({
           />
 
           <ProductAvailability
+            productId={
+              product.id
+            }
             stockQuantity={
               product.stockQuantity
             }
@@ -273,12 +202,23 @@ export default function ProductPurchasePanel({
           />
         </div>
 
-        <p className="mt-2 text-xs text-muted-foreground">
-          SKU:{" "}
-          <span className="font-mono text-foreground/80">
-            {product.sku}
-          </span>
-        </p>
+        <div className="mt-2 flex items-center justify-between gap-3">
+          <p className="text-xs text-muted-foreground">
+            SKU:{" "}
+            <span className="font-mono text-foreground/80">
+              {product.sku}
+            </span>
+          </p>
+
+          <ProductShareButton
+            productName={
+              product.name
+            }
+            shortDescription={
+              product.shortDescription
+            }
+          />
+        </div>
 
         <div className="mt-7">
           <ProductQuickSpecs
@@ -312,27 +252,22 @@ export default function ProductPurchasePanel({
         )}
 
         <div className="mt-7 grid gap-3 sm:grid-cols-[1fr_auto]">
-          <Button
-            type="button"
-            size="xl"
-            disabled={
-              purchaseIsDisabled
+          <BuyNowButton
+            productId={
+              product.id
             }
-            onClick={() => {
-              void handleBuyNow();
-            }}
+            productSlug={
+              product.slug
+            }
+            productName={
+              product.name
+            }
+            stockQuantity={
+              product.stockQuantity
+            }
+            size="xl"
             className="group w-full"
-          >
-            {cartIsLoading ? (
-              <LoaderCircle className="size-4 animate-spin" />
-            ) : (
-              <ArrowRight className="size-4 transition-transform duration-300 group-hover:translate-x-1" />
-            )}
-
-            {product.isInStock
-              ? "Buy Now"
-              : "Unavailable"}
-          </Button>
+          />
 
           <Button
             type="button"

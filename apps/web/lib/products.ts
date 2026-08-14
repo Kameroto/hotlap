@@ -45,3 +45,83 @@ export async function findProductBySlug(
     throw error;
   }
 }
+
+export async function getRelatedProducts(
+  product: Product,
+  limit = 4,
+): Promise<Product[]> {
+  const relatedProducts:
+    Product[] = [];
+
+  const seenProductIds =
+    new Set<string>([
+      product.id,
+    ]);
+
+  function addProducts(
+    products: Product[],
+  ) {
+    for (const candidate of products) {
+      if (
+        seenProductIds.has(
+          candidate.id,
+        )
+      ) {
+        continue;
+      }
+
+      seenProductIds.add(
+        candidate.id,
+      );
+      relatedProducts.push(
+        candidate,
+      );
+
+      if (
+        relatedProducts.length ===
+        limit
+      ) {
+        break;
+      }
+    }
+  }
+
+  const categoryResponse =
+    await getAllProducts({
+      category:
+        product.category.slug,
+      sort: "featured",
+      pageSize: Math.min(
+        limit + 1,
+        48,
+      ),
+    });
+
+  addProducts(
+    categoryResponse.products,
+  );
+
+  if (
+    relatedProducts.length <
+    limit
+  ) {
+    try {
+      const catalogueResponse =
+        await getAllProducts({
+          sort: "featured",
+          pageSize: Math.min(
+            limit * 3,
+            48,
+          ),
+        });
+
+      addProducts(
+        catalogueResponse.products,
+      );
+    } catch {
+      // Same-category recommendations remain useful if the fallback is unavailable.
+    }
+  }
+
+  return relatedProducts;
+}

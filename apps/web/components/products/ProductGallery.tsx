@@ -9,6 +9,10 @@ import {
 } from "lucide-react";
 
 import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
   useState,
 } from "react";
 
@@ -38,48 +42,59 @@ export default function ProductGallery({
   badges = [],
 }: ProductGalleryProps) {
   const orderedImages =
-    [...images].sort(
-      (
-        firstImage,
-        secondImage,
-      ) => {
-        if (
-          firstImage.isPrimary !==
-          secondImage.isPrimary
-        ) {
-          return firstImage.isPrimary
-            ? -1
-            : 1;
-        }
+    useMemo(
+      () =>
+        [...images].sort(
+          (
+            firstImage,
+            secondImage,
+          ) => {
+            if (
+              firstImage.isPrimary !==
+              secondImage.isPrimary
+            ) {
+              return firstImage.isPrimary
+                ? -1
+                : 1;
+            }
 
-        return (
-          firstImage.sortOrder -
-          secondImage.sortOrder
-        );
-      },
+            return (
+              firstImage.sortOrder -
+              secondImage.sortOrder
+            );
+          },
+        ),
+      [images],
     );
 
   const galleryImages =
-    orderedImages.length > 0
-      ? orderedImages
-      : [
-          {
-            id:
-              "placeholder",
+    useMemo(
+      () =>
+        orderedImages.length > 0
+          ? orderedImages
+          : [
+              {
+                id:
+                  "placeholder",
 
-            url:
-              placeholderImage,
+                url:
+                  placeholderImage,
 
-            alt:
-              productName,
+                alt:
+                  productName,
 
-            sortOrder:
-              0,
+                sortOrder:
+                  0,
 
-            isPrimary:
-              true,
-          },
-        ];
+                isPrimary:
+                  true,
+              },
+            ],
+      [
+        orderedImages,
+        productName,
+      ],
+    );
 
   const [
     selectedIndex,
@@ -93,46 +108,170 @@ export default function ProductGallery({
     galleryImages[0].url,
   );
 
+  const [
+    lightboxIsOpen,
+    setLightboxIsOpen,
+  ] = useState(false);
+
+  const dialogReference =
+    useRef<HTMLDialogElement>(
+      null,
+    );
+
+  const lightboxTriggerReference =
+    useRef<HTMLButtonElement>(
+      null,
+    );
+
   const selectedImage =
     galleryImages[
       selectedIndex
     ];
 
-  function selectImage(
-    index: number,
-  ) {
-    const nextImage =
-      galleryImages[index];
+  const selectImage =
+    useCallback(
+      (index: number) => {
+        const nextImage =
+          galleryImages[
+            index
+          ];
 
-    if (!nextImage) {
+        if (!nextImage) {
+          return;
+        }
+
+        setSelectedIndex(
+          index,
+        );
+
+        setImageSource(
+          nextImage.url,
+        );
+      },
+      [galleryImages],
+    );
+
+  const showPrevious =
+    useCallback(() => {
+      selectImage(
+        selectedIndex === 0
+          ? galleryImages.length -
+              1
+          : selectedIndex - 1,
+      );
+    }, [
+      galleryImages.length,
+      selectImage,
+      selectedIndex,
+    ]);
+
+  const showNext =
+    useCallback(() => {
+      selectImage(
+        selectedIndex ===
+          galleryImages.length -
+            1
+          ? 0
+          : selectedIndex + 1,
+      );
+    }, [
+      galleryImages.length,
+      selectImage,
+      selectedIndex,
+    ]);
+
+  useEffect(() => {
+    const dialog =
+      dialogReference.current;
+
+    if (!dialog) {
       return;
     }
 
-    setSelectedIndex(
-      index,
+    if (
+      lightboxIsOpen &&
+      !dialog.open
+    ) {
+      const previousOverflow =
+        document.body.style
+          .overflow;
+
+      dialog.showModal();
+      document.body.style.overflow =
+        "hidden";
+
+      return () => {
+        document.body.style.overflow =
+          previousOverflow;
+
+        if (dialog.open) {
+          dialog.close();
+        }
+      };
+    }
+  }, [lightboxIsOpen]);
+
+  useEffect(() => {
+    if (!lightboxIsOpen) {
+      return;
+    }
+
+    function handleKeyDown(
+      event: KeyboardEvent,
+    ) {
+      if (
+        galleryImages.length <=
+        1
+      ) {
+        return;
+      }
+
+      if (
+        event.key ===
+        "ArrowLeft"
+      ) {
+        event.preventDefault();
+        showPrevious();
+      }
+
+      if (
+        event.key ===
+        "ArrowRight"
+      ) {
+        event.preventDefault();
+        showNext();
+      }
+    }
+
+    window.addEventListener(
+      "keydown",
+      handleKeyDown,
     );
 
-    setImageSource(
-      nextImage.url,
-    );
+    return () => {
+      window.removeEventListener(
+        "keydown",
+        handleKeyDown,
+      );
+    };
+  }, [
+    galleryImages.length,
+    lightboxIsOpen,
+    showNext,
+    showPrevious,
+  ]);
+
+  function openLightbox() {
+    setLightboxIsOpen(true);
   }
 
-  function showPrevious() {
-    selectImage(
-      selectedIndex === 0
-        ? galleryImages.length -
-            1
-        : selectedIndex - 1,
-    );
-  }
+  function closeLightbox() {
+    setLightboxIsOpen(false);
 
-  function showNext() {
-    selectImage(
-      selectedIndex ===
-        galleryImages.length -
-          1
-        ? 0
-        : selectedIndex + 1,
+    requestAnimationFrame(
+      () => {
+        lightboxTriggerReference.current?.focus();
+      },
     );
   }
 
@@ -143,7 +282,17 @@ export default function ProductGallery({
 
         <div className="pointer-events-none absolute top-1/2 left-1/2 size-[420px] -translate-x-1/2 -translate-y-1/2 rounded-full bg-primary/[0.055] blur-[110px]" />
 
-        <div className="relative aspect-square sm:aspect-[4/3] lg:aspect-square xl:aspect-[4/3]">
+        <button
+          ref={
+            lightboxTriggerReference
+          }
+          type="button"
+          onClick={
+            openLightbox
+          }
+          aria-label={`Open image gallery for ${productName}`}
+          className="relative block aspect-square w-full cursor-zoom-in overflow-hidden rounded-2xl outline-none focus-visible:ring-2 focus-visible:ring-primary/70 focus-visible:ring-inset sm:aspect-[4/3] lg:aspect-square xl:aspect-[4/3]"
+        >
           <Image
             key={
               imageSource
@@ -158,14 +307,14 @@ export default function ProductGallery({
             fill
             priority
             sizes="(max-width: 1024px) 100vw, 55vw"
-            className="object-contain p-7 transition-transform duration-500 ease-[cubic-bezier(0.22,1,0.36,1)] group-hover:scale-[1.035] sm:p-10"
+            className="object-contain p-7 transition-transform duration-500 ease-[cubic-bezier(0.22,1,0.36,1)] motion-reduce:transition-none group-hover:scale-[1.035] sm:p-10"
             onError={() =>
               setImageSource(
                 placeholderImage,
               )
             }
           />
-        </div>
+        </button>
 
         {badges.length >
           0 && (
@@ -178,9 +327,16 @@ export default function ProductGallery({
           </div>
         )}
 
-        <div className="absolute top-4 right-4 z-10 flex size-10 items-center justify-center rounded-full border border-white/10 bg-black/50 text-muted-foreground backdrop-blur-xl">
+        <button
+          type="button"
+          onClick={
+            openLightbox
+          }
+          aria-label={`Expand image gallery for ${productName}`}
+          className="absolute top-4 right-4 z-10 flex size-10 items-center justify-center rounded-full border border-white/10 bg-black/50 text-muted-foreground backdrop-blur-xl transition-colors hover:border-primary/50 hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/70"
+        >
           <Expand className="size-4" />
-        </div>
+        </button>
 
         {galleryImages.length >
           1 && (
@@ -264,6 +420,152 @@ export default function ProductGallery({
           )}
         </div>
       )}
+
+      <dialog
+        ref={
+          dialogReference
+        }
+        aria-label={`${productName} image gallery`}
+        onCancel={(event) => {
+          event.preventDefault();
+          closeLightbox();
+        }}
+        onClose={() => {
+          if (
+            lightboxIsOpen
+          ) {
+            closeLightbox();
+          }
+        }}
+        onClick={(event) => {
+          if (
+            event.target ===
+            event.currentTarget
+          ) {
+            closeLightbox();
+          }
+        }}
+        className="m-auto h-[100dvh] max-h-none w-screen max-w-none border-0 bg-transparent p-0 text-foreground backdrop:bg-black/90 backdrop:backdrop-blur-md sm:h-[calc(100dvh-2rem)] sm:w-[calc(100vw-2rem)] sm:rounded-2xl"
+      >
+        <div className="relative flex h-full w-full flex-col overflow-hidden bg-[#080a0c] sm:rounded-2xl sm:border sm:border-white/10">
+          <div className="flex shrink-0 items-center justify-between gap-4 border-b border-white/8 px-4 py-3 sm:px-5">
+            <p className="min-w-0 truncate text-sm font-semibold">
+              {productName}
+            </p>
+
+            <div className="flex items-center gap-3">
+              <span className="text-xs text-muted-foreground">
+                {selectedIndex + 1} / {galleryImages.length}
+              </span>
+
+              <button
+                type="button"
+                onClick={
+                  closeLightbox
+                }
+                aria-label="Close image gallery"
+                className="flex size-10 items-center justify-center rounded-full border border-white/10 bg-white/[0.04] transition-colors hover:border-primary/50 hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/70"
+              >
+                <span aria-hidden="true" className="text-2xl leading-none">
+                  &times;
+                </span>
+              </button>
+            </div>
+          </div>
+
+          <div className="relative min-h-0 flex-1 overflow-hidden">
+            <Image
+              key={`lightbox-${imageSource}`}
+              src={
+                imageSource
+              }
+              alt={
+                selectedImage.alt ||
+                productName
+              }
+              fill
+              sizes="100vw"
+              className="object-contain p-4 sm:p-10"
+              onError={() =>
+                setImageSource(
+                  placeholderImage,
+                )
+              }
+            />
+
+            {galleryImages.length >
+              1 && (
+              <>
+                <button
+                  type="button"
+                  onClick={
+                    showPrevious
+                  }
+                  aria-label="Previous product image"
+                  className="absolute top-1/2 left-3 flex size-11 -translate-y-1/2 items-center justify-center rounded-full border border-white/15 bg-black/65 backdrop-blur-xl transition-colors hover:border-primary/60 hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/70 sm:left-6 sm:size-12"
+                >
+                  <ChevronLeft className="size-6" />
+                </button>
+
+                <button
+                  type="button"
+                  onClick={
+                    showNext
+                  }
+                  aria-label="Next product image"
+                  className="absolute top-1/2 right-3 flex size-11 -translate-y-1/2 items-center justify-center rounded-full border border-white/15 bg-black/65 backdrop-blur-xl transition-colors hover:border-primary/60 hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/70 sm:right-6 sm:size-12"
+                >
+                  <ChevronRight className="size-6" />
+                </button>
+              </>
+            )}
+          </div>
+
+          {galleryImages.length >
+            1 && (
+            <div className="flex shrink-0 justify-center gap-2 overflow-x-auto border-t border-white/8 px-4 py-3 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+              {galleryImages.map(
+                (
+                  image,
+                  index,
+                ) => (
+                  <button
+                    key={`lightbox-thumbnail-${image.id}`}
+                    type="button"
+                    onClick={() =>
+                      selectImage(
+                        index,
+                      )
+                    }
+                    aria-label={`Show product image ${index + 1}`}
+                    aria-pressed={
+                      index ===
+                      selectedIndex
+                    }
+                    className={cn(
+                      "relative size-14 shrink-0 overflow-hidden rounded-lg border bg-[#0c0f12] outline-none transition-colors focus-visible:ring-2 focus-visible:ring-primary/70 sm:size-16",
+                      index === selectedIndex
+                        ? "border-primary"
+                        : "border-white/10 opacity-60 hover:opacity-100",
+                    )}
+                  >
+                    <Image
+                      src={
+                        image.url ||
+                        placeholderImage
+                      }
+                      alt=""
+                      fill
+                      sizes="64px"
+                      className="object-contain p-1.5"
+                    />
+                  </button>
+                ),
+              )}
+            </div>
+          )}
+        </div>
+      </dialog>
     </div>
   );
 }

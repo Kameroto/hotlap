@@ -103,6 +103,11 @@ export type OrderDetailsResponse = {
 };
 
 export type CreateOrderRequest = {
+  directPurchase?: {
+    productId: string;
+    quantity: 1;
+  };
+
   addressId?: string | null;
 
   deliveryAddress?: {
