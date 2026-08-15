@@ -1,7 +1,6 @@
 "use client";
 
 import {
-  Download,
   LoaderCircle,
   RefreshCw,
 } from "lucide-react";
@@ -32,12 +31,10 @@ import type {
 } from "@/types/order";
 
 type OrderActionsProps = {
-  orderId: string;
   items: OrderItem[];
 };
 
 export default function OrderActions({
-  orderId,
   items,
 }: OrderActionsProps) {
   const reorderIsInFlight =
@@ -95,6 +92,11 @@ export default function OrderActions({
     setReorderIsPending(true);
 
     let addedQuantity = 0;
+    let addedProductCount = 0;
+    const failedProductNames: string[] =
+      [];
+    const skippedProductNames: string[] =
+      [];
 
     try {
       for (
@@ -104,51 +106,95 @@ export default function OrderActions({
         if (
           !item.productId
         ) {
-          continue;
-        }
-
-        const itemWasAdded =
-          await addItem(
-            item.productId,
-            item.quantity,
+          skippedProductNames.push(
+            item.productName,
           );
-
-        if (!itemWasAdded) {
           continue;
         }
 
-        addedQuantity +=
-          item.quantity;
+        try {
+          const itemWasAdded =
+            await addItem(
+              item.productId,
+              item.quantity,
+            );
+
+          if (!itemWasAdded) {
+            failedProductNames.push(
+              item.productName,
+            );
+            continue;
+          }
+
+          addedQuantity +=
+            item.quantity;
+          addedProductCount += 1;
+        } catch {
+          failedProductNames.push(
+            item.productName,
+          );
+        }
       }
+
+      const unavailableCount =
+        failedProductNames.length +
+        skippedProductNames.length;
 
       if (
         addedQuantity === 0
       ) {
         toast.error(
-          "The products in this order are currently unavailable.",
+          unavailableCount > 0
+            ? "None of the products in this order could be added. They may be unavailable or exceed current stock."
+            : "This order has no products available to reorder.",
         );
 
         return;
       }
 
-      toast.success(
-        `${addedQuantity} ${
-          addedQuantity === 1
-            ? "item"
-            : "items"
-        } added to your cart.`,
-        {
-          action: {
-            label:
-              "View Cart",
+      const reorderMessage =
+        unavailableCount > 0
+          ? `${addedQuantity} ${
+              addedQuantity === 1
+                ? "item was"
+                : "items were"
+            } added from ${addedProductCount} ${
+              addedProductCount === 1
+                ? "product"
+                : "products"
+            }. ${unavailableCount} ${
+              unavailableCount === 1
+                ? "product could"
+                : "products could"
+            } not be added.`
+          : `${addedQuantity} ${
+              addedQuantity === 1
+                ? "item"
+                : "items"
+            } added to your cart.`;
 
-            onClick: () => {
-              window.location.href =
-                "/cart";
-            },
+      const toastOptions = {
+        action: {
+          label: "View Cart",
+
+          onClick: () => {
+            window.location.href =
+              "/cart";
           },
         },
-      );
+      };
+
+      if (unavailableCount > 0) {
+        toast.warning(
+          reorderMessage,
+          toastOptions,
+        );
+      } else {
+        toast.success(
+          reorderMessage,
+          toastOptions,
+        );
+      }
     } catch (error) {
       toast.error(
         error instanceof
@@ -161,12 +207,6 @@ export default function OrderActions({
         false;
       setReorderIsPending(false);
     }
-  }
-
-  function handleInvoiceDownload() {
-    toast.info(
-      `Invoice generation for ${orderId} is planned after the MVP.`,
-    );
   }
 
   return (
@@ -191,18 +231,7 @@ export default function OrderActions({
           <RefreshCw className="h-4 w-4" />
         )}
 
-        Reorder Items
-      </Button>
-
-      <Button
-        type="button"
-        variant="outline"
-        onClick={
-          handleInvoiceDownload
-        }
-      >
-        <Download className="h-4 w-4" />
-        Download Invoice
+        Reorder items
       </Button>
     </div>
   );

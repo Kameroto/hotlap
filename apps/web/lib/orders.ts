@@ -3,6 +3,7 @@ import type {
   OrderStatus,
   OrderTimelineStep,
   PaymentMethod,
+  PaymentStatus,
   ShippingMethod,
 } from "@/types/order";
 
@@ -35,28 +36,28 @@ export function getOrderStatusClassName(
     string
   > = {
     PENDING:
-      "bg-slate-100 text-slate-800",
+      "border border-border bg-muted text-muted-foreground",
 
     CONFIRMED:
-      "bg-blue-100 text-blue-800",
+      "border border-primary/25 bg-primary/10 text-primary",
 
     PROCESSING:
-      "bg-amber-100 text-amber-800",
+      "border border-amber-400/30 bg-amber-400/10 text-amber-300",
 
     SHIPPED:
-      "bg-purple-100 text-purple-800",
+      "border border-violet-400/30 bg-violet-400/10 text-violet-300",
 
     OUT_FOR_DELIVERY:
-      "bg-orange-100 text-orange-800",
+      "border border-orange-400/30 bg-orange-400/10 text-orange-300",
 
     DELIVERED:
-      "bg-green-100 text-green-800",
+      "border border-[var(--hotlap-success)]/30 bg-[var(--hotlap-success)]/10 text-[var(--hotlap-success)]",
 
     CANCELLED:
-      "bg-red-100 text-red-800",
+      "border border-destructive/30 bg-destructive/10 text-destructive",
 
     REFUNDED:
-      "bg-slate-100 text-slate-800",
+      "border border-border bg-muted text-muted-foreground",
   };
 
   return classes[status];
@@ -81,6 +82,34 @@ export function getPaymentMethodLabel(
   return labels[
     paymentMethod
   ];
+}
+
+export function getPaymentStatusLabel(
+  paymentStatus: PaymentStatus,
+  paymentMethod: PaymentMethod,
+): string {
+  if (
+    paymentMethod ===
+      "CASH_ON_DELIVERY" &&
+    paymentStatus === "PENDING"
+  ) {
+    return "Payment due on delivery";
+  }
+
+  const labels: Record<
+    PaymentStatus,
+    string
+  > = {
+    PENDING: "Payment pending",
+    AUTHORIZED: "Payment authorized",
+    PAID: "Paid",
+    FAILED: "Payment failed",
+    REFUNDED: "Refunded",
+    PARTIALLY_REFUNDED:
+      "Partially refunded",
+  };
+
+  return labels[paymentStatus];
 }
 
 export function getShippingMethodLabel(
@@ -112,6 +141,7 @@ function hasReachedStatus(
 ): boolean {
   const progression: OrderStatus[] =
     [
+      "PENDING",
       "CONFIRMED",
       "PROCESSING",
       "SHIPPED",
@@ -152,12 +182,11 @@ export function buildOrderTimeline(
   ) {
     return [
       {
-        status: "CONFIRMED",
-        title: "Order confirmed",
+        status: "PENDING",
+        title: "Order received",
         description:
           "Your HotLap order was received.",
         completedAt:
-          order.confirmedAt ??
           order.placedAt,
         isCompleted: true,
       },
@@ -177,7 +206,7 @@ export function buildOrderTimeline(
             : "The order has been cancelled.",
         completedAt:
           order.cancelledAt ??
-          order.updatedAt,
+          undefined,
         isCompleted: true,
       },
     ];
@@ -185,13 +214,28 @@ export function buildOrderTimeline(
 
   return [
     {
+      status: "PENDING",
+      title: "Order received",
+      description:
+        "HotLap received your order.",
+      completedAt:
+        order.placedAt,
+      isCompleted: true,
+    },
+
+    {
       status: "CONFIRMED",
       title: "Order confirmed",
       description:
-        "Your HotLap order was received successfully.",
+        hasReachedStatus(
+          order.status,
+          "CONFIRMED",
+        )
+          ? "Your HotLap order was confirmed."
+          : "Confirmation is the next order stage.",
       completedAt:
         order.confirmedAt ??
-        order.placedAt,
+        undefined,
       isCompleted:
         hasReachedStatus(
           order.status,
@@ -204,7 +248,12 @@ export function buildOrderTimeline(
       title:
         "Preparing your order",
       description:
-        "Your products are being checked and packed.",
+        hasReachedStatus(
+          order.status,
+          "PROCESSING",
+        )
+          ? "Your order entered preparation."
+          : "Order preparation is the next stage after confirmation.",
       isCompleted:
         hasReachedStatus(
           order.status,
@@ -216,7 +265,12 @@ export function buildOrderTimeline(
       status: "SHIPPED",
       title: "Shipped",
       description:
-        "Your order has been handed to the delivery partner.",
+        hasReachedStatus(
+          order.status,
+          "SHIPPED",
+        )
+          ? "Your order was marked as shipped."
+          : "This stage will be updated when the order is shipped.",
       completedAt:
         order.shippedAt ??
         undefined,
@@ -233,7 +287,12 @@ export function buildOrderTimeline(
       title:
         "Out for delivery",
       description:
-        "Your order is on its way to you.",
+        hasReachedStatus(
+          order.status,
+          "OUT_FOR_DELIVERY",
+        )
+          ? "Your order was marked as out for delivery."
+          : "This stage will be updated when the order is out for delivery.",
       isCompleted:
         hasReachedStatus(
           order.status,
@@ -245,7 +304,12 @@ export function buildOrderTimeline(
       status: "DELIVERED",
       title: "Delivered",
       description:
-        "Your order has been delivered.",
+        hasReachedStatus(
+          order.status,
+          "DELIVERED",
+        )
+          ? "Your order was marked as delivered."
+          : "This stage will be updated after delivery is confirmed.",
       completedAt:
         order.deliveredAt ??
         undefined,

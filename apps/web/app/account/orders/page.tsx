@@ -1,6 +1,7 @@
 "use client";
 
 import {
+  useCallback,
   useEffect,
   useState,
 } from "react";
@@ -8,18 +9,25 @@ import {
 import Link from "next/link";
 
 import {
+  AlertTriangle,
   ArrowRight,
   LoaderCircle,
   Package,
+  RefreshCw,
 } from "lucide-react";
 
 import {
-  getOrders,
-} from "@/lib/api/orders";
+  Button,
+  buttonVariants,
+} from "@/components/ui/button";
 
 import {
   ApiClientError,
 } from "@/lib/api/client";
+
+import {
+  getOrders,
+} from "@/lib/api/orders";
 
 import {
   formatCurrency,
@@ -37,122 +45,160 @@ import type {
 } from "@/types/order";
 
 export default function OrdersPage() {
-  const [
-    orders,
-    setOrders,
-  ] = useState<OrderSummary[]>(
-    [],
-  );
+  const [orders, setOrders] =
+    useState<OrderSummary[]>([]);
 
-  const [
-    isLoading,
-    setIsLoading,
-  ] = useState(true);
+  const [isLoading, setIsLoading] =
+    useState(true);
 
-  const [
-    errorMessage,
-    setErrorMessage,
-  ] = useState<string | null>(
-    null,
-  );
+  const [errorMessage, setErrorMessage] =
+    useState<string | null>(null);
 
-  useEffect(() => {
-    let requestIsActive =
-      true;
+  const loadOrders = useCallback(
+    async (signal?: AbortSignal) => {
+      if (signal?.aborted) {
+        return;
+      }
 
-    void getOrders()
-      .then((response) => {
-        if (
-          !requestIsActive
-        ) {
+      setIsLoading(true);
+      setErrorMessage(null);
+
+      try {
+        const response =
+          await getOrders();
+
+        if (signal?.aborted) {
           return;
         }
 
-        setOrders(
-          response.orders,
-        );
-      })
-      .catch(
-        (error: unknown) => {
-          if (
-            !requestIsActive
-          ) {
-            return;
-          }
-
-          setErrorMessage(
-            error instanceof
-            ApiClientError
-              ? error.message
-              : "Unable to load your orders.",
-          );
-        },
-      )
-      .finally(() => {
-        if (
-          requestIsActive
-        ) {
-          setIsLoading(
-            false,
-          );
+        setOrders(response.orders);
+      } catch (error) {
+        if (signal?.aborted) {
+          return;
         }
-      });
+
+        setErrorMessage(
+          error instanceof ApiClientError
+            ? error.message
+            : "Unable to load your orders.",
+        );
+      } finally {
+        if (!signal?.aborted) {
+          setIsLoading(false);
+        }
+      }
+    },
+    [],
+  );
+
+  useEffect(() => {
+    const controller =
+      new AbortController();
+
+    queueMicrotask(() => {
+      void loadOrders(
+        controller.signal,
+      );
+    });
 
     return () => {
-      requestIsActive =
-        false;
+      controller.abort();
     };
-  }, []);
+  }, [loadOrders]);
 
   return (
-    <div>
-      <p className="text-sm font-semibold uppercase tracking-[0.2em] text-red-600">
-        Orders
-      </p>
+    <div className="min-w-0">
+      <div className="relative overflow-hidden rounded-3xl border border-border bg-[linear-gradient(135deg,rgba(255,106,0,0.10),rgba(16,19,22,0.96)_42%,rgba(8,10,12,0.98))] px-5 py-8 shadow-[0_24px_80px_rgba(0,0,0,0.28)] sm:px-8 sm:py-10">
+        <div
+          aria-hidden="true"
+          className="absolute -top-20 -right-16 h-48 w-48 rounded-full bg-primary/10 blur-3xl"
+        />
 
-      <h1 className="mt-3 text-4xl font-bold tracking-tight">
-        Order History
-      </h1>
+        <div className="relative min-w-0">
+          <p className="text-xs font-bold uppercase tracking-[0.18em] text-primary">
+            Customer garage
+          </p>
 
-      <p className="mt-4 text-muted-foreground">
-        View your HotLap purchases
-        and delivery progress.
-      </p>
+          <h1 className="mt-3 break-words text-3xl font-black tracking-[-0.035em] text-foreground sm:text-4xl">
+            Order history
+          </h1>
+
+          <p className="mt-3 max-w-2xl text-sm leading-6 text-muted-foreground sm:text-base">
+            Review your HotLap purchases,
+            current status, and order details.
+          </p>
+        </div>
+      </div>
 
       {isLoading ? (
-        <div className="mt-10 rounded-2xl border p-12 text-center">
-          <LoaderCircle className="mx-auto h-7 w-7 animate-spin text-red-600" />
+        <div
+          className="mt-8 rounded-3xl border border-border bg-card/80 px-5 py-14 text-center shadow-[0_18px_60px_rgba(0,0,0,0.2)] sm:px-8"
+          role="status"
+          aria-live="polite"
+        >
+          <LoaderCircle className="mx-auto h-7 w-7 animate-spin text-primary motion-reduce:animate-none" />
 
-          <p className="mt-3 text-muted-foreground">
-            Loading orders...
+          <p className="mt-4 font-medium text-foreground">
+            Loading your orders…
           </p>
         </div>
       ) : errorMessage ? (
-        <div className="mt-10 rounded-2xl border border-red-200 bg-red-50 p-6 text-red-800">
-          {errorMessage}
+        <div
+          className="mt-8 rounded-3xl border border-destructive/35 bg-destructive/8 px-5 py-8 sm:px-8"
+          role="alert"
+        >
+          <AlertTriangle className="h-7 w-7 text-destructive" />
+
+          <h2 className="mt-4 text-xl font-bold text-foreground">
+            Orders could not be loaded
+          </h2>
+
+          <p className="mt-2 max-w-xl text-sm leading-6 text-muted-foreground">
+            {errorMessage} Your order history
+            has not been replaced with an empty
+            list.
+          </p>
+
+          <Button
+            type="button"
+            variant="outline"
+            className="mt-6"
+            onClick={() => {
+              void loadOrders();
+            }}
+          >
+            <RefreshCw className="h-4 w-4" />
+            Retry
+          </Button>
         </div>
-      ) : orders.length >
-        0 ? (
-        <div className="mt-10 space-y-5">
-          {orders.map(
-            (order) => (
+      ) : orders.length > 0 ? (
+        <div className="mt-8 space-y-5">
+          {orders.map((order) => {
+            const statusLabel =
+              getOrderStatusLabel(
+                order.status,
+              );
+
+            const itemLabel = `${order.totalQuantity} ${
+              order.totalQuantity === 1
+                ? "item"
+                : "items"
+            }`;
+
+            return (
               <article
-                key={
-                  order.id
-                }
-                className="rounded-2xl border bg-card p-6"
+                key={order.id}
+                className="min-w-0 overflow-hidden rounded-3xl border border-border bg-card/90 p-5 shadow-[0_16px_50px_rgba(0,0,0,0.2)] transition-colors hover:border-primary/35 motion-reduce:transition-none sm:p-7"
               >
-                <div className="flex flex-col gap-5 sm:flex-row sm:items-start sm:justify-between">
-                  <div>
-                    <p className="text-sm text-muted-foreground">
-                      Order
+                <div className="flex min-w-0 flex-col gap-5 sm:flex-row sm:items-start sm:justify-between">
+                  <div className="min-w-0">
+                    <p className="text-xs font-bold uppercase tracking-[0.14em] text-muted-foreground">
+                      Order reference
                     </p>
 
-                    <p className="mt-1 text-lg font-bold">
-                      {
-                        order.orderNumber
-                      }
-                    </p>
+                    <h2 className="mt-2 break-all text-xl font-black tracking-tight text-foreground">
+                      {order.orderNumber}
+                    </h2>
 
                     <p className="mt-2 text-sm text-muted-foreground">
                       {formatOrderDate(
@@ -162,101 +208,101 @@ export default function OrdersPage() {
                   </div>
 
                   <span
-                    className={`w-fit rounded-full px-3 py-1.5 text-xs font-semibold ${getOrderStatusClassName(
+                    className={`w-fit max-w-full rounded-full px-3 py-1.5 text-xs font-bold ${getOrderStatusClassName(
                       order.status,
                     )}`}
                   >
-                    {getOrderStatusLabel(
-                      order.status,
-                    )}
+                    <span className="sr-only">
+                      Order status:{" "}
+                    </span>
+                    {statusLabel}
                   </span>
                 </div>
 
-                <div className="mt-6 grid gap-5 border-t pt-6 sm:grid-cols-3">
+                <dl className="mt-6 grid gap-5 border-t border-border pt-6 sm:grid-cols-3">
                   <div>
-                    <p className="text-sm text-muted-foreground">
+                    <dt className="text-xs font-bold uppercase tracking-[0.12em] text-muted-foreground">
                       Items
-                    </p>
-
-                    <p className="mt-1 font-semibold">
-                      {
-                        order.totalQuantity
-                      }
-                    </p>
+                    </dt>
+                    <dd className="mt-1 font-semibold text-foreground">
+                      {itemLabel}
+                    </dd>
                   </div>
 
                   <div>
-                    <p className="text-sm text-muted-foreground">
+                    <dt className="text-xs font-bold uppercase tracking-[0.12em] text-muted-foreground">
                       Payment
-                    </p>
-
-                    <p className="mt-1 font-semibold">
+                    </dt>
+                    <dd className="mt-1 break-words font-semibold text-foreground">
                       {getPaymentMethodLabel(
                         order.paymentMethod,
                       )}
-                    </p>
+                    </dd>
                   </div>
 
                   <div>
-                    <p className="text-sm text-muted-foreground">
+                    <dt className="text-xs font-bold uppercase tracking-[0.12em] text-muted-foreground">
                       Total
-                    </p>
-
-                    <p className="mt-1 font-bold">
+                    </dt>
+                    <dd className="mt-1 font-black text-foreground">
                       {formatCurrency(
                         order.total,
                         "INR",
                       )}
-                    </p>
+                    </dd>
                   </div>
-                </div>
+                </dl>
 
-                <div className="mt-6 flex flex-col gap-4 border-t pt-6 sm:flex-row sm:items-center sm:justify-between">
-                  <div className="flex items-center gap-3 text-sm text-muted-foreground">
-                    <Package className="h-5 w-5" />
-
-                    <span>
+                <div className="mt-6 flex min-w-0 flex-col gap-5 border-t border-border pt-6 sm:flex-row sm:items-center sm:justify-between">
+                  <div className="flex min-w-0 items-start gap-3 text-sm text-muted-foreground">
+                    <Package className="mt-0.5 h-5 w-5 shrink-0 text-primary" />
+                    <p className="min-w-0 break-words leading-6">
                       {order.items
                         .map(
                           (item) =>
                             item.productName,
                         )
-                        .join(
-                          ", ",
-                        )}
-                    </span>
+                        .join(", ")}
+                    </p>
                   </div>
 
                   <Link
                     href={`/account/orders/${order.orderNumber}`}
-                    className="flex shrink-0 items-center gap-2 text-sm font-semibold text-red-600 hover:underline"
+                    className="inline-flex min-h-11 shrink-0 items-center gap-2 self-start rounded-lg font-semibold text-primary outline-none transition hover:text-[#ff7a00] focus-visible:ring-2 focus-visible:ring-primary/50 focus-visible:ring-offset-2 focus-visible:ring-offset-background motion-reduce:transition-none sm:self-auto"
                   >
-                    View Order
+                    View order
                     <ArrowRight className="h-4 w-4" />
                   </Link>
                 </div>
               </article>
-            ),
-          )}
+            );
+          })}
         </div>
       ) : (
-        <div className="mt-10 rounded-3xl border border-dashed px-6 py-16 text-center">
-          <Package className="mx-auto h-8 w-8 text-muted-foreground" />
+        <div className="mt-8 rounded-3xl border border-dashed border-border bg-card/60 px-5 py-14 text-center sm:px-8 sm:py-16">
+          <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl border border-primary/25 bg-primary/10 text-primary">
+            <Package className="h-7 w-7" />
+          </div>
 
-          <h2 className="mt-5 text-xl font-semibold">
-            No orders yet
+          <h2 className="mt-6 text-2xl font-bold tracking-tight text-foreground">
+            Your order history is empty
           </h2>
 
-          <p className="mt-2 text-muted-foreground">
-            Your completed HotLap
-            orders will appear here.
+          <p className="mx-auto mt-3 max-w-md text-sm leading-6 text-muted-foreground">
+            Completed HotLap checkouts will
+            appear here with their current order
+            status.
           </p>
 
           <Link
             href="/products"
-            className="mt-5 inline-block font-semibold text-red-600 hover:underline"
+            className={buttonVariants({
+              size: "lg",
+              className: "mt-7",
+            })}
           >
-            Browse Products
+            Browse products
+            <ArrowRight className="h-4 w-4" />
           </Link>
         </div>
       )}

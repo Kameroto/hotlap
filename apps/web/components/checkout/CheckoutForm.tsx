@@ -793,8 +793,31 @@ export default function CheckoutForm({
         );
       }
 
+      let confirmationMarker:
+        | string
+        | null = null;
+
+      try {
+        confirmationMarker =
+          window.crypto.randomUUID();
+
+        window.sessionStorage.setItem(
+          "hotlap-order-confirmation",
+          confirmationMarker,
+        );
+      } catch {
+        confirmationMarker = null;
+      }
+
+      const orderDestination =
+        `/account/orders/${response.order.orderNumber}`;
+
       router.push(
-        `/account/orders/${response.order.orderNumber}`,
+        confirmationMarker
+          ? `${orderDestination}?placed=${encodeURIComponent(
+              confirmationMarker,
+            )}`
+          : orderDestination,
       );
     } catch (error) {
       submissionIsInFlight.current =

@@ -14,11 +14,33 @@ type OrderStatusTimelineProps = {
 export default function OrderStatusTimeline({
   timeline,
 }: OrderStatusTimelineProps) {
+  const currentStepIndex =
+    timeline.reduce(
+      (latestIndex, step, index) =>
+        step.isCompleted
+          ? index
+          : latestIndex,
+      -1,
+    );
+
   return (
-    <ol className="relative">
+    <ol
+      className="relative"
+      aria-label="Order progress"
+    >
       {timeline.map((step, index) => {
         const isLastStep =
           index === timeline.length - 1;
+
+        const isCurrentStep =
+          index === currentStepIndex;
+
+        const stageLabel =
+          isCurrentStep
+            ? "Current stage"
+            : step.isCompleted
+              ? "Completed stage"
+              : "Upcoming stage";
 
         return (
           <li
@@ -30,7 +52,7 @@ export default function OrderStatusTimeline({
                 aria-hidden="true"
                 className={`absolute top-9 left-[17px] h-[calc(100%-1.25rem)] w-px ${
                   step.isCompleted
-                    ? "bg-green-500"
+                    ? "bg-[var(--hotlap-success)]"
                     : "bg-border"
                 }`}
               />
@@ -39,9 +61,10 @@ export default function OrderStatusTimeline({
             <div
               className={`relative z-10 flex h-9 w-9 shrink-0 items-center justify-center rounded-full border ${
                 step.isCompleted
-                  ? "border-green-500 bg-green-500 text-white"
-                  : "bg-background text-muted-foreground"
+                  ? "border-[var(--hotlap-success)] bg-[var(--hotlap-success)] text-black"
+                  : "border-border bg-background text-muted-foreground"
               }`}
+              aria-hidden="true"
             >
               {step.isCompleted ? (
                 <Check className="h-4 w-4" />
@@ -50,13 +73,30 @@ export default function OrderStatusTimeline({
               )}
             </div>
 
-            <div className="pt-1">
+            <div
+              className="min-w-0 pt-1"
+              aria-current={
+                isCurrentStep
+                  ? "step"
+                  : undefined
+              }
+            >
+              <p
+                className={`text-[0.65rem] font-bold uppercase tracking-[0.14em] ${
+                  isCurrentStep
+                    ? "text-primary"
+                    : "text-muted-foreground"
+                }`}
+              >
+                {stageLabel}
+              </p>
+
               <h3
-                className={
+                className={`mt-1 ${
                   step.isCompleted
-                    ? "font-semibold"
+                    ? "font-semibold text-foreground"
                     : "font-semibold text-muted-foreground"
-                }
+                }`}
               >
                 {step.title}
               </h3>
@@ -66,8 +106,10 @@ export default function OrderStatusTimeline({
               </p>
 
               {step.completedAt && (
-                <p className="mt-2 text-xs font-medium text-green-700">
-                  {step.completedAt}
+                <p className="mt-2 text-xs font-medium text-[var(--hotlap-success)]">
+                  {formatTimelineDate(
+                    step.completedAt,
+                  )}
                 </p>
               )}
             </div>
@@ -76,4 +118,16 @@ export default function OrderStatusTimeline({
       })}
     </ol>
   );
+}
+
+function formatTimelineDate(
+  date: string,
+): string {
+  return new Intl.DateTimeFormat(
+    "en-IN",
+    {
+      dateStyle: "medium",
+      timeStyle: "short",
+    },
+  ).format(new Date(date));
 }
