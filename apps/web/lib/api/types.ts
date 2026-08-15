@@ -121,6 +121,7 @@ export type ServerCartItem = {
   id: string;
   quantity: number;
   lineTotal: number;
+  isPurchasable: boolean;
   product: Product;
 };
 

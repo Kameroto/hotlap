@@ -7,6 +7,11 @@ import {
 } from "lucide-react";
 
 import {
+  useRef,
+  useState,
+} from "react";
+
+import {
   toast,
 } from "sonner";
 
@@ -35,6 +40,14 @@ export default function OrderActions({
   orderId,
   items,
 }: OrderActionsProps) {
+  const reorderIsInFlight =
+    useRef(false);
+
+  const [
+    reorderIsPending,
+    setReorderIsPending,
+  ] = useState(false);
+
   const addItem =
     useCartStore(
       (state) =>
@@ -53,7 +66,34 @@ export default function OrderActions({
         state.isLoading,
     );
 
+  const isReconciling =
+    useCartStore(
+      (state) =>
+        state.isReconciling,
+    );
+
+  const itemMutationIsPending =
+    useCartStore(
+      (state) =>
+        state.pendingProductIds.length >
+        0,
+    );
+
+  const loadStatus =
+    useCartStore(
+      (state) =>
+        state.loadStatus,
+    );
+
   async function reorderItems() {
+    if (reorderIsInFlight.current) {
+      return;
+    }
+
+    reorderIsInFlight.current =
+      true;
+    setReorderIsPending(true);
+
     let addedQuantity = 0;
 
     try {
@@ -67,10 +107,15 @@ export default function OrderActions({
           continue;
         }
 
-        await addItem(
-          item.productId,
-          item.quantity,
-        );
+        const itemWasAdded =
+          await addItem(
+            item.productId,
+            item.quantity,
+          );
+
+        if (!itemWasAdded) {
+          continue;
+        }
 
         addedQuantity +=
           item.quantity;
@@ -111,6 +156,10 @@ export default function OrderActions({
           ? error.message
           : "Unable to reorder these products.",
       );
+    } finally {
+      reorderIsInFlight.current =
+        false;
+      setReorderIsPending(false);
     }
   }
 
@@ -126,14 +175,18 @@ export default function OrderActions({
         type="button"
         disabled={
           !hasHydrated ||
-          isLoading
+          loadStatus !== "loaded" ||
+          isLoading ||
+          isReconciling ||
+          itemMutationIsPending ||
+          reorderIsPending
         }
         onClick={() => {
           void reorderItems();
         }}
       >
-        {isLoading ? (
-          <LoaderCircle className="h-4 w-4 animate-spin" />
+        {reorderIsPending ? (
+          <LoaderCircle className="h-4 w-4 animate-spin motion-reduce:animate-none" />
         ) : (
           <RefreshCw className="h-4 w-4" />
         )}

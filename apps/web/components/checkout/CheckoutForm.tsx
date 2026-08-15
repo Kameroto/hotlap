@@ -241,6 +241,7 @@ export default function CheckoutForm({
             quantity: 1,
             lineTotal:
               directProduct.price,
+            isPurchasable: true,
             product:
               directProduct,
           },

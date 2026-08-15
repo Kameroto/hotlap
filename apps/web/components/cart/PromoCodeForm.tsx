@@ -5,6 +5,7 @@ import {
 } from "react";
 
 import {
+  AlertTriangle,
   CheckCircle2,
   LoaderCircle,
   Tag,
@@ -51,6 +52,31 @@ export default function PromoCodeForm({
         state.isLoading,
     );
 
+  const isReconciling =
+    useCartStore(
+      (state) =>
+        state.isReconciling,
+    );
+
+  const itemMutationIsPending =
+    useCartStore(
+      (state) =>
+        state.pendingProductIds.length >
+        0,
+    );
+
+  const loadStatus =
+    useCartStore(
+      (state) =>
+        state.loadStatus,
+    );
+
+  const operationIsBlocked =
+    isLoading ||
+    isReconciling ||
+    itemMutationIsPending ||
+    loadStatus !== "loaded";
+
   const applyPromotionCode =
     useCartStore(
       (state) =>
@@ -95,9 +121,14 @@ export default function PromoCodeForm({
     }
 
     try {
-      await applyPromotionCode(
-        normalizedCode,
-      );
+      const codeWasApplied =
+        await applyPromotionCode(
+          normalizedCode,
+        );
+
+      if (!codeWasApplied) {
+        return;
+      }
 
       setPromotionCode("");
 
@@ -119,7 +150,12 @@ export default function PromoCodeForm({
 
   async function handleRemovePromotionCode(): Promise<void> {
     try {
-      await removePromotionCode();
+      const codeWasRemoved =
+        await removePromotionCode();
+
+      if (!codeWasRemoved) {
+        return;
+      }
 
       setPromotionCode("");
 
@@ -140,24 +176,39 @@ export default function PromoCodeForm({
   }
 
   if (
-    coupon &&
-    coupon.isValid
+    coupon
   ) {
     return (
-      <div className="rounded-xl border border-green-200 bg-green-50 p-4">
+      <div
+        className={
+          coupon.isValid
+            ? "rounded-xl border border-emerald-400/25 bg-emerald-400/[0.06] p-4"
+            : "rounded-xl border border-primary/25 bg-primary/[0.055] p-4"
+        }
+      >
         <div className="flex items-start justify-between gap-4">
           <div className="flex min-w-0 gap-3">
-            <CheckCircle2 className="mt-0.5 h-5 w-5 shrink-0 text-green-700" />
+            {coupon.isValid ? (
+              <CheckCircle2 className="mt-0.5 size-5 shrink-0 text-emerald-400" />
+            ) : (
+              <AlertTriangle className="mt-0.5 size-5 shrink-0 text-primary" />
+            )}
 
             <div className="min-w-0">
-              <p className="font-semibold text-green-900">
+              <p className="font-semibold text-foreground">
                 {
                   coupon.code
                 }
               </p>
 
               {coupon.name && (
-                <p className="mt-1 text-sm font-medium text-green-800">
+                <p
+                  className={
+                    coupon.isValid
+                      ? "mt-1 text-sm font-medium text-emerald-300"
+                      : "mt-1 text-sm font-medium text-primary"
+                  }
+                >
                   {
                     coupon.name
                   }
@@ -165,14 +216,20 @@ export default function PromoCodeForm({
               )}
 
               {coupon.description && (
-                <p className="mt-1 text-sm leading-5 text-green-800">
+                <p className="mt-1 text-sm leading-5 text-muted-foreground">
                   {
                     coupon.description
                   }
                 </p>
               )}
 
-              <p className="mt-2 text-sm text-green-700">
+              <p
+                className={
+                  coupon.isValid
+                    ? "mt-2 text-sm text-emerald-300"
+                    : "mt-2 text-sm text-muted-foreground"
+                }
+              >
                 {
                   coupon.message
                 }
@@ -185,16 +242,20 @@ export default function PromoCodeForm({
             variant="ghost"
             size="icon"
             disabled={
-              isLoading
+              operationIsBlocked
             }
             aria-label={`Remove coupon ${coupon.code}`}
             onClick={() => {
               void handleRemovePromotionCode();
             }}
-            className="shrink-0 text-green-800 hover:bg-green-100 hover:text-green-950"
+            className={
+              coupon.isValid
+                ? "shrink-0 text-emerald-300 hover:bg-emerald-400/10 hover:text-emerald-200"
+                : "shrink-0 text-primary hover:bg-primary/10 hover:text-primary"
+            }
           >
             {isLoading ? (
-              <LoaderCircle className="h-4 w-4 animate-spin" />
+              <LoaderCircle className="size-4 animate-spin motion-reduce:animate-none" />
             ) : (
               <X className="h-4 w-4" />
             )}
@@ -212,7 +273,7 @@ export default function PromoCodeForm({
     >
       <label
         htmlFor="cart-promotion-code"
-        className="text-sm font-medium"
+        className="text-sm font-semibold text-foreground"
       >
         Coupon code
       </label>
@@ -228,7 +289,7 @@ export default function PromoCodeForm({
               promotionCode
             }
             disabled={
-              isLoading
+              operationIsBlocked
             }
             autoComplete="off"
             placeholder="Enter coupon"
@@ -239,7 +300,7 @@ export default function PromoCodeForm({
                 event.target.value.toUpperCase(),
               );
             }}
-            className="h-10 w-full rounded-lg border bg-background pr-3 pl-10 text-sm uppercase outline-none transition placeholder:normal-case focus:border-primary focus:ring-2 focus:ring-primary/20 disabled:cursor-not-allowed disabled:opacity-60"
+            className="h-11 w-full rounded-xl border border-white/10 bg-black/20 pr-3 pl-10 text-sm uppercase text-foreground outline-none transition placeholder:normal-case placeholder:text-muted-foreground focus-visible:border-primary focus-visible:ring-2 focus-visible:ring-primary/25 disabled:cursor-not-allowed disabled:opacity-60 motion-reduce:transition-none"
           />
         </div>
 
@@ -247,7 +308,7 @@ export default function PromoCodeForm({
           type="submit"
           variant="outline"
           disabled={
-            isLoading ||
+            operationIsBlocked ||
             subtotal <= 0 ||
             promotionCode.trim()
               .length === 0
@@ -255,7 +316,7 @@ export default function PromoCodeForm({
         >
           {isLoading ? (
             <>
-              <LoaderCircle className="h-4 w-4 animate-spin" />
+              <LoaderCircle className="size-4 animate-spin motion-reduce:animate-none" />
               Applying...
             </>
           ) : (
@@ -265,7 +326,7 @@ export default function PromoCodeForm({
       </div>
 
       <p className="mt-2 text-xs leading-5 text-muted-foreground">
-        Coupon eligibility and discount amounts are verified securely by HotLap at the server.
+        Eligibility and discount amounts are verified by the HotLap server.
       </p>
     </form>
   );

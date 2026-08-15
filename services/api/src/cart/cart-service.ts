@@ -23,6 +23,7 @@ export type CartResponse = {
     id: string;
     quantity: number;
     lineTotal: number;
+    isPurchasable: boolean;
     product: ReturnType<
       typeof toProductResponse
     >;
@@ -262,6 +263,12 @@ export async function getCartResponse(
       return {
         id: item.id,
         quantity: item.quantity,
+
+        isPurchasable:
+          item.product.status ===
+            ProductStatus.ACTIVE &&
+          item.product.stockQuantity >
+            0,
 
         lineTotal: roundCurrency(
           unitPrice * item.quantity,

@@ -70,6 +70,26 @@ export default function BuyNowButton({
         state.isLoading,
     );
 
+  const cartIsReconciling =
+    useCartStore(
+      (state) =>
+        state.isReconciling,
+    );
+
+  const productIsPending =
+    useCartStore(
+      (state) =>
+        state.pendingProductIds.includes(
+          productId,
+        ),
+    );
+
+  const cartLoadStatus =
+    useCartStore(
+      (state) =>
+        state.loadStatus,
+    );
+
   const purchaseState =
     useProductPurchaseState({
       productId,
@@ -88,7 +108,13 @@ export default function BuyNowButton({
 
     if (
       !currentCartState.hasHydrated ||
-      currentCartState.isLoading
+      currentCartState.isLoading ||
+      currentCartState.isReconciling ||
+      currentCartState.loadStatus !==
+        "loaded" ||
+      currentCartState.pendingProductIds.includes(
+        productId,
+      )
     ) {
       return;
     }
@@ -138,6 +164,9 @@ export default function BuyNowButton({
       disabled={
         !hasHydrated ||
         cartIsLoading ||
+        cartIsReconciling ||
+        cartLoadStatus !== "loaded" ||
+        productIsPending ||
         actionIsPending ||
         !purchaseState.canAddToCart
       }
@@ -145,6 +174,7 @@ export default function BuyNowButton({
         void handleBuyNow();
       }}
       aria-label={`Buy ${productName} now`}
+      aria-busy={actionIsPending}
       className={
         className
       }
@@ -157,8 +187,10 @@ export default function BuyNowButton({
           ? "Stock Limit Reached"
           : actionIsPending
             ? "Opening..."
-            : cartIsLoading
-              ? "Updating..."
+            : cartIsLoading ||
+                cartIsReconciling ||
+                productIsPending
+              ? "Please wait..."
             : "Buy Now"}
     </Button>
   );

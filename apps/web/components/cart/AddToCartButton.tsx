@@ -79,6 +79,26 @@ export default function AddToCartButton({
         state.isLoading,
     );
 
+  const isReconciling =
+    useCartStore(
+      (state) =>
+        state.isReconciling,
+    );
+
+  const productIsPending =
+    useCartStore(
+      (state) =>
+        state.pendingProductIds.includes(
+          productId,
+        ),
+    );
+
+  const loadStatus =
+    useCartStore(
+      (state) =>
+        state.loadStatus,
+    );
+
   const addItem =
     useCartStore(
       (state) =>
@@ -113,7 +133,13 @@ export default function AddToCartButton({
 
     if (
       !currentCartState.hasHydrated ||
-      currentCartState.isLoading
+      currentCartState.isLoading ||
+      currentCartState.isReconciling ||
+      currentCartState.loadStatus !==
+        "loaded" ||
+      currentCartState.pendingProductIds.includes(
+        productId,
+      )
     ) {
       return;
     }
@@ -158,10 +184,15 @@ export default function AddToCartButton({
     setActionIsPending(true);
 
     try {
-      await addItem(
-        productId,
-        1,
-      );
+      const itemWasAdded =
+        await addItem(
+          productId,
+          1,
+        );
+
+      if (!itemWasAdded) {
+        return;
+      }
 
       toast.success(
         `${productName} added to your cart.`,
@@ -201,6 +232,9 @@ export default function AddToCartButton({
       disabled={
         !hasHydrated ||
         isLoading ||
+        isReconciling ||
+        loadStatus !== "loaded" ||
+        productIsPending ||
         actionIsPending ||
         !purchaseState.canAddToCart
       }
@@ -208,11 +242,15 @@ export default function AddToCartButton({
         void handleAddToCart();
       }}
       aria-label={`Add ${productName} to cart`}
+      aria-busy={
+        actionIsPending ||
+        productIsPending
+      }
       className={
         className
       }
     >
-      {isLoading || actionIsPending ? (
+      {actionIsPending || productIsPending ? (
         <LoaderCircle className="h-4 w-4 animate-spin motion-reduce:animate-none" />
       ) : isInCart ? (
         <Check className="h-4 w-4" />
@@ -224,7 +262,7 @@ export default function AddToCartButton({
         ? "Unavailable"
         : purchaseState.hasReachedStockLimit
           ? "Stock Limit Reached"
-          : isLoading || actionIsPending
+          : actionIsPending || productIsPending
             ? "Updating..."
             : isInCart
               ? `In Cart (${cartItem?.quantity ?? 0})`
