@@ -248,8 +248,13 @@ export default function CartPage() {
       itemHasStockConflict,
     );
 
+  const couponIsInvalid =
+    cart?.coupon?.isValid ===
+    false;
+
   const checkoutIsBlocked =
-    invalidItems.length > 0;
+    invalidItems.length > 0 ||
+    couponIsInvalid;
 
   const cartHasGlobalOperation =
     isLoading ||
@@ -411,6 +416,7 @@ export default function CartPage() {
                   totalBeforeShipping={cart?.totalBeforeShipping ?? 0}
                   checkoutIsBlocked={checkoutIsBlocked}
                   invalidItemCount={invalidItems.length}
+                  couponIsInvalid={couponIsInvalid}
                   globalOperationIsPending={cartHasGlobalOperation}
                   itemMutationIsPending={pendingProductIds.length > 0}
                 />
@@ -719,6 +725,7 @@ function CartSummary({
   totalBeforeShipping,
   checkoutIsBlocked,
   invalidItemCount,
+  couponIsInvalid,
   globalOperationIsPending,
   itemMutationIsPending,
 }: {
@@ -727,6 +734,7 @@ function CartSummary({
   totalBeforeShipping: number;
   checkoutIsBlocked: boolean;
   invalidItemCount: number;
+  couponIsInvalid: boolean;
   globalOperationIsPending: boolean;
   itemMutationIsPending: boolean;
 }) {
@@ -793,11 +801,27 @@ function CartSummary({
           role="alert"
           className="mt-5 rounded-xl border border-primary/25 bg-primary/[0.055] p-3 text-sm leading-5 text-foreground"
         >
-          Resolve {invalidItemCount}{" "}
-          {invalidItemCount === 1
-            ? "item"
-            : "items"}{" "}
-          with an availability conflict before checkout.
+          {invalidItemCount > 0 && (
+            <p>
+              Resolve {invalidItemCount}{" "}
+              {invalidItemCount === 1
+                ? "item"
+                : "items"}{" "}
+              with an availability conflict before checkout.
+            </p>
+          )}
+
+          {couponIsInvalid && (
+            <p
+              className={
+                invalidItemCount > 0
+                  ? "mt-2"
+                  : undefined
+              }
+            >
+              Remove or resolve the invalid coupon before checkout.
+            </p>
+          )}
         </div>
       )}
 

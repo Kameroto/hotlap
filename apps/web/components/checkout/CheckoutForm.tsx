@@ -608,6 +608,35 @@ export default function CheckoutForm({
     );
   }
 
+  if (
+    !directCheckoutIsValid &&
+    cart?.coupon?.isValid ===
+      false
+  ) {
+    return (
+      <CheckoutStateShell
+        icon={
+          <AlertTriangle className="size-6" />
+        }
+        title="Your coupon needs attention"
+        description={`${cart.coupon.message} Remove or resolve the coupon in your cart before checkout. The coupon has not been removed automatically.`}
+      >
+        <Link
+          href="/cart"
+          className={cn(
+            buttonVariants({
+              size: "lg",
+            }),
+            "mt-7",
+          )}
+        >
+          Return to Cart
+          <ArrowRight className="size-4" />
+        </Link>
+      </CheckoutStateShell>
+    );
+  }
+
   const invalidCartItems =
     directCheckoutIsValid
       ? []

@@ -1,6 +1,7 @@
 import {
   DiscountType,
   ProductStatus,
+  type Prisma,
 } from "../generated/prisma/client.js";
 
 import { prisma } from "../lib/prisma.js";
@@ -53,16 +54,23 @@ function roundCurrency(
   );
 }
 
-async function evaluateCoupon(
+type CouponDatabase = Pick<
+  Prisma.TransactionClient,
+  "coupon"
+>;
+
+export async function evaluateCoupon(
   couponCode: string | null,
   subtotal: number,
+  database: CouponDatabase = prisma,
+  evaluatedAt: Date = new Date(),
 ): Promise<CartCouponResponse | null> {
   if (!couponCode) {
     return null;
   }
 
   const coupon =
-    await prisma.coupon.findUnique({
+    await database.coupon.findUnique({
       where: {
         code: couponCode,
       },
@@ -80,8 +88,6 @@ async function evaluateCoupon(
     };
   }
 
-  const now = new Date();
-
   if (!coupon.isActive) {
     return {
       code: coupon.code,
@@ -97,7 +103,7 @@ async function evaluateCoupon(
 
   if (
     coupon.startsAt &&
-    coupon.startsAt > now
+    coupon.startsAt > evaluatedAt
   ) {
     return {
       code: coupon.code,
@@ -113,7 +119,7 @@ async function evaluateCoupon(
 
   if (
     coupon.expiresAt &&
-    coupon.expiresAt < now
+    coupon.expiresAt < evaluatedAt
   ) {
     return {
       code: coupon.code,

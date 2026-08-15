@@ -6,12 +6,12 @@ import {
   OrderStatus,
   PaymentStatus,
   ProductStatus,
+  Prisma,
   ShippingMethod,
-  type Prisma,
 } from "../generated/prisma/client.js";
 
 import {
-  getCartResponse,
+  evaluateCoupon,
 } from "../cart/cart-service.js";
 
 import { prisma } from "../lib/prisma.js";
@@ -71,6 +71,17 @@ function createOrderNumber(): string {
     .replaceAll("-", "")
     .slice(0, 8)
     .toUpperCase()}`;
+}
+
+function isTransactionConflict(
+  error: unknown,
+): boolean {
+  return (
+    typeof error === "object" &&
+    error !== null &&
+    "code" in error &&
+    error.code === "P2034"
+  );
 }
 
 function getShippingCost(
@@ -695,87 +706,17 @@ export async function createOrder({
     });
   }
 
-  const cart =
-    await prisma.cart.findFirst({
-      where: {
-        userId,
-      },
-
-      orderBy: {
-        createdAt: "asc",
-      },
-    });
-
-  if (!cart) {
-    throw new ApiError({
-      statusCode: 400,
-      code: "EMPTY_CART",
-      message:
-        "Add products before placing an order.",
-    });
-  }
-
-  const cartResponse =
-    await getCartResponse(cart.id);
-
-  if (
-    cartResponse.items.length === 0
-  ) {
-    throw new ApiError({
-      statusCode: 400,
-      code: "EMPTY_CART",
-      message:
-        "Add products before placing an order.",
-    });
-  }
-
-  if (
-    cart.appliedCouponCode &&
-    !cartResponse.coupon?.isValid
-  ) {
-    throw new ApiError({
-      statusCode: 409,
-      code:
-        "CART_COUPON_INVALID",
-      message:
-        cartResponse.coupon?.message ??
-        "The applied coupon is no longer valid. Review your cart before checkout.",
-    });
-  }
-
-  const shippingCost =
-    getShippingCost(
-      information.shippingMethod,
-      cartResponse.subtotal,
-    );
-
-  const taxAmount = 0;
-
-  const total =
-    roundCurrency(
-      cartResponse.totalBeforeShipping +
-        shippingCost +
-        taxAmount,
-    );
-
-  const coupon =
-    cart.appliedCouponCode &&
-    cartResponse.coupon?.isValid
-      ? await prisma.coupon.findUnique({
-          where: {
-            code:
-              cart.appliedCouponCode,
-          },
-        })
-      : null;
-
-  const createdOrder =
-    await prisma.$transaction(
+  const createdOrder = await prisma
+    .$transaction(
       async (transaction) => {
         const cartWithItems =
-          await transaction.cart.findUnique({
+          await transaction.cart.findFirst({
             where: {
-              id: cart.id,
+              userId,
+            },
+
+            orderBy: {
+              createdAt: "asc",
             },
 
             include: {
@@ -831,6 +772,232 @@ export async function createOrder({
           }
         }
 
+        const orderItems =
+          cartWithItems.items.map(
+            (cartItem) => {
+              const unitPrice =
+                cartItem.product.price.toNumber();
+
+              return {
+                productId:
+                  cartItem.productId,
+                productName:
+                  cartItem.product.name,
+                productSlug:
+                  cartItem.product.slug,
+                sku:
+                  cartItem.product.sku,
+                quantity:
+                  cartItem.quantity,
+                unitPrice,
+                lineTotal:
+                  roundCurrency(
+                    unitPrice *
+                      cartItem.quantity,
+                  ),
+              };
+            },
+          );
+
+        const subtotal =
+          roundCurrency(
+            orderItems.reduce(
+              (sum, item) =>
+                sum +
+                item.lineTotal,
+              0,
+            ),
+          );
+
+        const couponEvaluatedAt =
+          new Date();
+
+        const couponEvaluation =
+          await evaluateCoupon(
+            cartWithItems.appliedCouponCode,
+            subtotal,
+            transaction,
+            couponEvaluatedAt,
+          );
+
+        if (
+          cartWithItems.appliedCouponCode &&
+          !couponEvaluation?.isValid
+        ) {
+          throw new ApiError({
+            statusCode: 409,
+            code:
+              "CART_COUPON_INVALID",
+            message:
+              couponEvaluation?.message ??
+              "The applied coupon is no longer valid. Review your cart before checkout.",
+          });
+        }
+
+        const coupon =
+          cartWithItems.appliedCouponCode
+            ? await transaction.coupon.findUnique({
+                where: {
+                  code:
+                    cartWithItems.appliedCouponCode,
+                },
+              })
+            : null;
+
+        if (
+          cartWithItems.appliedCouponCode &&
+          !coupon
+        ) {
+          throw new ApiError({
+            statusCode: 409,
+            code:
+              "CART_COUPON_INVALID",
+            message:
+              "The applied coupon no longer exists. Review your cart before checkout.",
+          });
+        }
+
+        const discountAmount =
+          couponEvaluation?.isValid
+            ? couponEvaluation.discountAmount
+            : 0;
+
+        const totalBeforeShipping =
+          roundCurrency(
+            Math.max(
+              subtotal -
+                discountAmount,
+              0,
+            ),
+          );
+
+        const shippingCost =
+          getShippingCost(
+            information.shippingMethod,
+            subtotal,
+          );
+
+        const taxAmount = 0;
+
+        const total =
+          roundCurrency(
+            totalBeforeShipping +
+              shippingCost +
+              taxAmount,
+          );
+
+        for (
+          const cartItem of
+          cartWithItems.items
+        ) {
+          const inventoryUpdate =
+            await transaction.product.updateMany({
+              where: {
+                id:
+                  cartItem.productId,
+
+                status:
+                  ProductStatus.ACTIVE,
+
+                stockQuantity: {
+                  gte:
+                    cartItem.quantity,
+                },
+              },
+
+              data: {
+                stockQuantity: {
+                  decrement:
+                    cartItem.quantity,
+                },
+              },
+            });
+
+          if (
+            inventoryUpdate.count !==
+            1
+          ) {
+            throw new ApiError({
+              statusCode: 409,
+              code:
+                "INSUFFICIENT_STOCK",
+              message:
+                `${cartItem.product.name} is no longer available in the requested quantity.`,
+            });
+          }
+        }
+
+        if (coupon) {
+          const couponUsageUpdate =
+            await transaction.coupon.updateMany({
+              where: {
+                id: coupon.id,
+                isActive: true,
+                minimumSubtotal: {
+                  lte: subtotal,
+                },
+                ...(coupon.usageLimit ===
+                null
+                  ? {}
+                  : {
+                      usageCount: {
+                        lt:
+                          coupon.usageLimit,
+                      },
+                    }),
+                AND: [
+                  {
+                    OR: [
+                      {
+                        startsAt:
+                          null,
+                      },
+                      {
+                        startsAt: {
+                          lte:
+                            couponEvaluatedAt,
+                        },
+                      },
+                    ],
+                  },
+                  {
+                    OR: [
+                      {
+                        expiresAt:
+                          null,
+                      },
+                      {
+                        expiresAt: {
+                          gte:
+                            couponEvaluatedAt,
+                        },
+                      },
+                    ],
+                  },
+                ],
+              },
+
+              data: {
+                usageCount: {
+                  increment: 1,
+                },
+              },
+            });
+
+          if (
+            couponUsageUpdate.count !==
+            1
+          ) {
+            throw new ApiError({
+              statusCode: 409,
+              code:
+                "CART_COUPON_INVALID",
+              message:
+                "The applied coupon is no longer valid. Review your cart before checkout.",
+            });
+          }
+        }
+
         const order =
           await transaction.order.create({
             data: {
@@ -875,11 +1042,10 @@ export async function createOrder({
                 resolvedAddress.address,
 
               subtotal:
-                cartResponse.subtotal,
+                subtotal,
 
               discountAmount:
-                cartResponse
-                  .discountAmount,
+                discountAmount,
 
               shippingCost,
 
@@ -895,108 +1061,22 @@ export async function createOrder({
                 new Date(),
 
               items: {
-                create:
-                  cartWithItems.items.map(
-                    (cartItem) => {
-                      const unitPrice =
-                        cartItem.product.price.toNumber();
-
-                      return {
-                        productId:
-                          cartItem.productId,
-
-                        productName:
-                          cartItem.product.name,
-
-                        productSlug:
-                          cartItem.product.slug,
-
-                        sku:
-                          cartItem.product.sku,
-
-                        quantity:
-                          cartItem.quantity,
-
-                        unitPrice,
-
-                        lineTotal:
-                          roundCurrency(
-                            unitPrice *
-                              cartItem.quantity,
-                          ),
-                      };
-                    },
-                  ),
+                create: orderItems,
               },
             },
           });
-
-        for (
-          const cartItem of
-          cartWithItems.items
-        ) {
-          const inventoryUpdate =
-            await transaction.product.updateMany({
-              where: {
-                id:
-                  cartItem.productId,
-
-                status:
-                  ProductStatus.ACTIVE,
-
-                stockQuantity: {
-                  gte:
-                    cartItem.quantity,
-                },
-              },
-
-              data: {
-                stockQuantity: {
-                  decrement:
-                    cartItem.quantity,
-                },
-              },
-            });
-
-          if (
-            inventoryUpdate.count !==
-            1
-          ) {
-            throw new ApiError({
-              statusCode: 409,
-              code:
-                "INSUFFICIENT_STOCK",
-              message:
-                `${cartItem.product.name} is no longer available in the requested quantity.`,
-            });
-          }
-        }
-
-        if (coupon) {
-          await transaction.coupon.update({
-            where: {
-              id: coupon.id,
-            },
-
-            data: {
-              usageCount: {
-                increment: 1,
-              },
-            },
-          });
-        }
 
         await transaction.cartItem.deleteMany({
           where: {
             cartId:
-              cart.id,
+              cartWithItems.id,
           },
         });
 
         await transaction.cart.update({
           where: {
             id:
-              cart.id,
+              cartWithItems.id,
           },
 
           data: {
@@ -1007,7 +1087,29 @@ export async function createOrder({
 
         return order;
       },
-    );
+      {
+        isolationLevel:
+          Prisma.TransactionIsolationLevel
+            .Serializable,
+      },
+    )
+    .catch((error: unknown) => {
+      if (
+        isTransactionConflict(
+          error,
+        )
+      ) {
+        throw new ApiError({
+          statusCode: 409,
+          code:
+            "CHECKOUT_RETRY_REQUIRED",
+          message:
+            "Your cart changed while the order was being placed. Review it and try again.",
+        });
+      }
+
+      throw error;
+    });
 
   return getOrderDetails({
     userId,
