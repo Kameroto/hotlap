@@ -729,6 +729,20 @@ export async function createOrder({
     });
   }
 
+  if (
+    cart.appliedCouponCode &&
+    !cartResponse.coupon?.isValid
+  ) {
+    throw new ApiError({
+      statusCode: 409,
+      code:
+        "CART_COUPON_INVALID",
+      message:
+        cartResponse.coupon?.message ??
+        "The applied coupon is no longer valid. Review your cart before checkout.",
+    });
+  }
+
   const shippingCost =
     getShippingCost(
       information.shippingMethod,
@@ -921,19 +935,41 @@ export async function createOrder({
           const cartItem of
           cartWithItems.items
         ) {
-          await transaction.product.update({
-            where: {
-              id:
-                cartItem.productId,
-            },
+          const inventoryUpdate =
+            await transaction.product.updateMany({
+              where: {
+                id:
+                  cartItem.productId,
 
-            data: {
-              stockQuantity: {
-                decrement:
-                  cartItem.quantity,
+                status:
+                  ProductStatus.ACTIVE,
+
+                stockQuantity: {
+                  gte:
+                    cartItem.quantity,
+                },
               },
-            },
-          });
+
+              data: {
+                stockQuantity: {
+                  decrement:
+                    cartItem.quantity,
+                },
+              },
+            });
+
+          if (
+            inventoryUpdate.count !==
+            1
+          ) {
+            throw new ApiError({
+              statusCode: 409,
+              code:
+                "INSUFFICIENT_STOCK",
+              message:
+                `${cartItem.product.name} is no longer available in the requested quantity.`,
+            });
+          }
         }
 
         if (coupon) {

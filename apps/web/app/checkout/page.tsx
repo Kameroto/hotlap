@@ -28,28 +28,31 @@ export default async function CheckoutPage({
     await searchParams;
 
   const buyNowValue =
-    Array.isArray(
-      resolvedSearchParams.buyNow,
-    )
-      ? resolvedSearchParams.buyNow[0]
-      : resolvedSearchParams.buyNow;
+    resolvedSearchParams.buyNow;
 
   const directCheckoutRequested =
+    buyNowValue !== undefined;
+
+  const directProductSlug =
     typeof buyNowValue ===
       "string" &&
     buyNowValue.trim().length >
-      0;
+      0
+      ? buyNowValue.trim()
+      : null;
 
   const directProduct =
-    directCheckoutRequested
+    directProductSlug
       ? await findProductBySlug(
-          buyNowValue.trim(),
+          directProductSlug,
         )
       : null;
 
   return (
-    <main>
-      <Section>
+    <main className="bg-[#080a0c]">
+      <Section className="relative overflow-x-clip">
+        <div className="pointer-events-none absolute inset-0 opacity-[0.08] hotlap-grid-background" />
+        <div className="pointer-events-none absolute top-0 right-[-12%] size-[520px] rounded-full bg-primary/[0.04] blur-[150px]" />
         <CheckoutForm
           directCheckoutRequested={
             directCheckoutRequested

@@ -14,13 +14,13 @@ export default function AccountLayout({
 }: AccountLayoutProps) {
   return (
     <AccountGuard>
-      <main>
+      <main className="min-w-0 overflow-x-clip">
         <Section>
           <Container>
-            <div className="grid gap-8 lg:grid-cols-[260px_1fr]">
+            <div className="grid w-full min-w-0 gap-8 lg:grid-cols-[260px_minmax(0,1fr)]">
               <AccountNavigation />
 
-              <div className="min-w-0">
+              <div className="w-full min-w-0">
                 {children}
               </div>
             </div>

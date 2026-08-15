@@ -6,7 +6,6 @@ export type ShippingMethod = {
   id: ShippingMethodId;
   name: string;
   description: string;
-  estimatedDelivery: string;
   cost: number;
 };
 
@@ -36,15 +35,13 @@ export function getShippingMethods(
           : `Free when your subtotal reaches ₹${FREE_STANDARD_SHIPPING_THRESHOLD.toLocaleString(
               "en-IN",
             )}.`,
-      estimatedDelivery: "4–7 business days",
       cost: standardShippingCost,
     },
     {
       id: "express",
       name: "Express Delivery",
       description:
-        "Priority dispatch and faster delivery.",
-      estimatedDelivery: "1–3 business days",
+        "Express shipping for this order.",
       cost: EXPRESS_SHIPPING_COST,
     },
   ];
