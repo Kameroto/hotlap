@@ -108,6 +108,9 @@ export default function LoginForm() {
       const destination =
         requestedDestination?.startsWith(
           "/",
+        ) &&
+        !requestedDestination.startsWith(
+          "//",
         )
           ? requestedDestination
           : "/account";

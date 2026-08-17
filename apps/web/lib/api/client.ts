@@ -31,6 +31,22 @@ export const GUEST_CART_TOKEN_STORAGE_KEY =
 
 let accessToken: string | null = null;
 
+let terminalAuthenticationFailureHandler:
+  | (() => void)
+  | null = null;
+
+export function setTerminalAuthenticationFailureHandler(
+  handler: (() => void) | null,
+): void {
+  terminalAuthenticationFailureHandler =
+    handler;
+}
+
+function handleTerminalAuthenticationFailure(): void {
+  setAccessToken(null);
+  terminalAuthenticationFailureHandler?.();
+}
+
 export class ApiClientError extends Error {
   readonly statusCode: number;
   readonly code: string;
@@ -335,22 +351,38 @@ export async function apiRequest<T>(
 
     try {
       await refreshSessionRequest();
-    } catch {
-      setAccessToken(null);
+    } catch (refreshError) {
+      if (
+        refreshError instanceof ApiClientError &&
+        refreshError.statusCode === 401
+      ) {
+        handleTerminalAuthenticationFailure();
+      }
 
-      throw error;
+      throw refreshError;
     }
 
-    return performRequest<T>(
-      path,
-      requestInit,
-      {
-        ...options,
+    try {
+      return await performRequest<T>(
+        path,
+        requestInit,
+        {
+          ...options,
 
-        retryAfterRefresh:
-          false,
-      },
-    );
+          retryAfterRefresh:
+            false,
+        },
+      );
+    } catch (retryError) {
+      if (
+        retryError instanceof ApiClientError &&
+        retryError.statusCode === 401
+      ) {
+        handleTerminalAuthenticationFailure();
+      }
+
+      throw retryError;
+    }
   }
 }
 

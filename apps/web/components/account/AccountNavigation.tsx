@@ -1,5 +1,10 @@
 "use client";
 
+import {
+  useRef,
+  useState,
+} from "react";
+
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
@@ -7,6 +12,7 @@ import {
   Heart,
   LayoutDashboard,
   LogOut,
+  LoaderCircle,
   MapPin,
   Package,
   Settings,
@@ -66,7 +72,20 @@ export default function AccountNavigation() {
     (state) => state.status,
   );
 
+  const logoutInFlightRef =
+    useRef(false);
+
+  const [isSigningOut, setIsSigningOut] =
+    useState(false);
+
   async function handleLogout(): Promise<void> {
+    if (logoutInFlightRef.current) {
+      return;
+    }
+
+    logoutInFlightRef.current = true;
+    setIsSigningOut(true);
+
     try {
       await logout();
 
@@ -85,9 +104,9 @@ export default function AccountNavigation() {
   }
 
   return (
-    <aside className="h-fit w-full min-w-0 max-w-full overflow-hidden rounded-2xl border bg-card p-4 lg:sticky lg:top-24">
+    <aside className="h-fit w-full min-w-0 max-w-full overflow-hidden rounded-3xl border border-border/80 bg-card/90 p-4 shadow-xl shadow-black/10 lg:sticky lg:top-24">
       <div className="min-w-0 border-b px-3 pb-5">
-        <p className="text-sm font-semibold uppercase tracking-[0.18em] text-red-600">
+        <p className="text-xs font-semibold uppercase tracking-[0.2em] text-primary">
           Customer Account
         </p>
 
@@ -120,11 +139,14 @@ export default function AccountNavigation() {
             <Link
               key={link.href}
               href={link.href}
+              aria-current={
+                isActive ? "page" : undefined
+              }
               className={cn(
                 "flex min-h-11 shrink-0 items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-background motion-reduce:transition-none lg:w-full",
                 isActive
                   ? "bg-primary text-primary-foreground"
-                  : "text-muted-foreground hover:bg-muted hover:text-foreground",
+                  : "text-muted-foreground hover:bg-muted/80 hover:text-foreground",
               )}
             >
               <Icon className="h-4 w-4" />
@@ -140,12 +162,26 @@ export default function AccountNavigation() {
           onClick={() => {
             void handleLogout();
           }}
-          disabled={status === "loading"}
-          className="flex min-h-11 w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium text-red-600 transition hover:bg-red-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-background disabled:pointer-events-none disabled:opacity-50 motion-reduce:transition-none"
+          disabled={
+            status === "loading" ||
+            isSigningOut
+          }
+          aria-busy={isSigningOut}
+          className="flex min-h-11 w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium text-destructive transition hover:bg-destructive/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-background disabled:pointer-events-none disabled:opacity-50 motion-reduce:transition-none"
         >
-          <LogOut className="h-4 w-4" />
+          {isSigningOut ? (
+            <LoaderCircle
+              className="h-4 w-4 animate-spin motion-reduce:animate-none"
+              aria-hidden="true"
+            />
+          ) : (
+            <LogOut
+              className="h-4 w-4"
+              aria-hidden="true"
+            />
+          )}
 
-          {status === "loading"
+          {isSigningOut
             ? "Signing Out..."
             : "Sign Out"}
         </button>

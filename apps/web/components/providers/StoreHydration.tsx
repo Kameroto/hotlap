@@ -55,7 +55,9 @@ export default function StoreHydration({
 
   useEffect(() => {
     if (
-      !authHasInitialized
+      !authHasInitialized ||
+      (authStatus !== "authenticated" &&
+        authStatus !== "unauthenticated")
     ) {
       return;
     }

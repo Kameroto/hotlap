@@ -5,6 +5,7 @@ import {
   loginUser,
   logoutUser,
   registerUser,
+  setTerminalAuthenticationFailureHandler,
   updateAccountProfile,
 } from "@/lib/api/client";
 
@@ -19,12 +20,14 @@ type AuthenticationStatus =
   | "idle"
   | "loading"
   | "authenticated"
-  | "unauthenticated";
+  | "unauthenticated"
+  | "error";
 
 type AuthState = {
   user: PublicUser | null;
   status: AuthenticationStatus;
   hasInitialized: boolean;
+  initializationError: string | null;
 
   initialize: () => Promise<void>;
 
@@ -56,6 +59,7 @@ export const useAuthStore =
     user: null,
     status: "idle",
     hasInitialized: false,
+    initializationError: null,
 
     initialize: async () => {
       if (get().hasInitialized) {
@@ -70,6 +74,7 @@ export const useAuthStore =
         (async () => {
           set({
             status: "loading",
+            initializationError: null,
           });
 
           try {
@@ -81,6 +86,7 @@ export const useAuthStore =
                 user: null,
                 status: "unauthenticated",
                 hasInitialized: true,
+                initializationError: null,
               });
 
               return;
@@ -90,12 +96,15 @@ export const useAuthStore =
               user: authentication.user,
               status: "authenticated",
               hasInitialized: true,
+              initializationError: null,
             });
           } catch (error) {
             set({
               user: null,
-              status: "unauthenticated",
-              hasInitialized: true,
+              status: "error",
+              hasInitialized: false,
+              initializationError:
+                "We could not verify your session. Check your connection and try again.",
             });
 
             throw error;
@@ -111,6 +120,7 @@ export const useAuthStore =
     login: async (credentials) => {
       set({
         status: "loading",
+        initializationError: null,
       });
 
       try {
@@ -121,6 +131,7 @@ export const useAuthStore =
           user: authentication.user,
           status: "authenticated",
           hasInitialized: true,
+          initializationError: null,
         });
 
         return authentication.user;
@@ -129,6 +140,7 @@ export const useAuthStore =
           user: null,
           status: "unauthenticated",
           hasInitialized: true,
+          initializationError: null,
         });
 
         throw error;
@@ -138,6 +150,7 @@ export const useAuthStore =
     register: async (information) => {
       set({
         status: "loading",
+        initializationError: null,
       });
 
       try {
@@ -150,6 +163,7 @@ export const useAuthStore =
           user: authentication.user,
           status: "authenticated",
           hasInitialized: true,
+          initializationError: null,
         });
 
         return authentication.user;
@@ -158,6 +172,7 @@ export const useAuthStore =
           user: null,
           status: "unauthenticated",
           hasInitialized: true,
+          initializationError: null,
         });
 
         throw error;
@@ -188,6 +203,7 @@ export const useAuthStore =
         user: updatedUser,
         status: "authenticated",
         hasInitialized: true,
+        initializationError: null,
       });
 
       return updatedUser;
@@ -201,6 +217,7 @@ export const useAuthStore =
           user: null,
           status: "unauthenticated",
           hasInitialized: true,
+          initializationError: null,
         });
       }
     },
@@ -212,6 +229,18 @@ export const useAuthStore =
           ? "authenticated"
           : "unauthenticated",
         hasInitialized: true,
+        initializationError: null,
       });
     },
   }));
+
+setTerminalAuthenticationFailureHandler(
+  () => {
+    useAuthStore.setState({
+      user: null,
+      status: "unauthenticated",
+      hasInitialized: true,
+      initializationError: null,
+    });
+  },
+);
