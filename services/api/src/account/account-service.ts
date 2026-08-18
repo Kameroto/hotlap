@@ -185,6 +185,57 @@ export async function getAddresses(
   };
 }
 
+const maximumAddressTransactionAttempts = 3;
+const maximumSavedAddresses = 5;
+
+function addressTransactionCanBeRetried(
+  error: unknown,
+): boolean {
+  return (
+    error instanceof
+      Prisma.PrismaClientKnownRequestError &&
+    error.code === "P2034"
+  );
+}
+
+async function runSerializableAddressTransaction<T>(
+  operation: (
+    transaction: Prisma.TransactionClient,
+  ) => Promise<T>,
+): Promise<T> {
+  for (
+    let attempt = 1;
+    attempt <=
+    maximumAddressTransactionAttempts;
+    attempt += 1
+  ) {
+    try {
+      return await prisma.$transaction(
+        operation,
+        {
+          isolationLevel:
+            Prisma.TransactionIsolationLevel
+              .Serializable,
+        },
+      );
+    } catch (error) {
+      if (
+        !addressTransactionCanBeRetried(
+          error,
+        ) ||
+        attempt ===
+          maximumAddressTransactionAttempts
+      ) {
+        throw error;
+      }
+    }
+  }
+
+  throw new Error(
+    "The address transaction retry loop ended unexpectedly.",
+  );
+}
+
 async function clearDefaultAddress(
   transaction: Prisma.TransactionClient,
   userId: string,
@@ -211,7 +262,7 @@ export async function createAddress({
   address: AddressResponse;
 }> {
   const address =
-    await prisma.$transaction(
+    await runSerializableAddressTransaction(
       async (transaction) => {
         const existingAddressCount =
           await transaction.address.count({
@@ -219,6 +270,18 @@ export async function createAddress({
               userId,
             },
           });
+
+        if (
+          existingAddressCount >=
+          maximumSavedAddresses
+        ) {
+          throw new ApiError({
+            statusCode: 409,
+            code: "ADDRESS_LIMIT_REACHED",
+            message:
+              "You can save up to 5 addresses.",
+          });
+        }
 
         const shouldBeDefault =
           information.isDefault ||
@@ -274,26 +337,26 @@ export async function updateAddress({
 }): Promise<{
   address: AddressResponse;
 }> {
-  const existingAddress =
-    await prisma.address.findFirst({
-      where: {
-        id: addressId,
-        userId,
-      },
-    });
-
-  if (!existingAddress) {
-    throw new ApiError({
-      statusCode: 404,
-      code: "ADDRESS_NOT_FOUND",
-      message:
-        "The requested address was not found.",
-    });
-  }
-
   const address =
-    await prisma.$transaction(
+    await runSerializableAddressTransaction(
       async (transaction) => {
+        const existingAddress =
+          await transaction.address.findFirst({
+            where: {
+              id: addressId,
+              userId,
+            },
+          });
+
+        if (!existingAddress) {
+          throw new ApiError({
+            statusCode: 404,
+            code: "ADDRESS_NOT_FOUND",
+            message:
+              "The requested address was not found.",
+          });
+        }
+
         if (information.isDefault) {
           await clearDefaultAddress(
             transaction,
@@ -347,26 +410,26 @@ export async function setDefaultAddress({
 }): Promise<{
   address: AddressResponse;
 }> {
-  const existingAddress =
-    await prisma.address.findFirst({
-      where: {
-        id: addressId,
-        userId,
-      },
-    });
-
-  if (!existingAddress) {
-    throw new ApiError({
-      statusCode: 404,
-      code: "ADDRESS_NOT_FOUND",
-      message:
-        "The requested address was not found.",
-    });
-  }
-
   const address =
-    await prisma.$transaction(
+    await runSerializableAddressTransaction(
       async (transaction) => {
+        const existingAddress =
+          await transaction.address.findFirst({
+            where: {
+              id: addressId,
+              userId,
+            },
+          });
+
+        if (!existingAddress) {
+          throw new ApiError({
+            statusCode: 404,
+            code: "ADDRESS_NOT_FOUND",
+            message:
+              "The requested address was not found.",
+          });
+        }
+
         await clearDefaultAddress(
           transaction,
           userId,
@@ -399,25 +462,25 @@ export async function deleteAddress({
 }): Promise<{
   message: string;
 }> {
-  const existingAddress =
-    await prisma.address.findFirst({
-      where: {
-        id: addressId,
-        userId,
-      },
-    });
-
-  if (!existingAddress) {
-    throw new ApiError({
-      statusCode: 404,
-      code: "ADDRESS_NOT_FOUND",
-      message:
-        "The requested address was not found.",
-    });
-  }
-
-  await prisma.$transaction(
+  await runSerializableAddressTransaction(
     async (transaction) => {
+      const existingAddress =
+        await transaction.address.findFirst({
+          where: {
+            id: addressId,
+            userId,
+          },
+        });
+
+      if (!existingAddress) {
+        throw new ApiError({
+          statusCode: 404,
+          code: "ADDRESS_NOT_FOUND",
+          message:
+            "The requested address was not found.",
+        });
+      }
+
       await transaction.address.delete({
         where: {
           id: addressId,

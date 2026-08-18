@@ -2,16 +2,22 @@
 
 import {
   useEffect,
+  useRef,
   useState,
+  type FormEvent,
 } from "react";
 
 import {
+  AlertCircle,
+  AlertTriangle,
   Check,
+  CheckCircle2,
   Home,
   LoaderCircle,
   MapPin,
   Pencil,
   Plus,
+  RefreshCw,
   Trash2,
   X,
 } from "lucide-react";
@@ -42,18 +48,25 @@ import type {
 } from "@/lib/api/types";
 
 const indianStates = [
+  "Andaman and Nicobar Islands",
   "Andhra Pradesh",
   "Arunachal Pradesh",
   "Assam",
   "Bihar",
+  "Chandigarh",
   "Chhattisgarh",
+  "Dadra and Nagar Haveli and Daman and Diu",
+  "Delhi",
   "Goa",
   "Gujarat",
   "Haryana",
   "Himachal Pradesh",
+  "Jammu and Kashmir",
   "Jharkhand",
   "Karnataka",
   "Kerala",
+  "Ladakh",
+  "Lakshadweep",
   "Madhya Pradesh",
   "Maharashtra",
   "Manipur",
@@ -61,6 +74,7 @@ const indianStates = [
   "Mizoram",
   "Nagaland",
   "Odisha",
+  "Puducherry",
   "Punjab",
   "Rajasthan",
   "Sikkim",
@@ -70,28 +84,27 @@ const indianStates = [
   "Uttar Pradesh",
   "Uttarakhand",
   "West Bengal",
-  "Delhi",
-  "Jammu and Kashmir",
-  "Ladakh",
-  "Puducherry",
 ];
 
 const addressSchema = z.object({
   label: z
     .string()
     .trim()
-    .min(
-      1,
-      "Enter an address label.",
-    )
-    .max(50),
+    .max(
+      50,
+      "Address label must contain no more than 50 characters.",
+    ),
 
   recipientName: z
     .string()
     .trim()
     .min(
       2,
-      "Enter the recipient name.",
+      "Recipient name must contain at least 2 characters.",
+    )
+    .max(
+      150,
+      "Recipient name must contain no more than 150 characters.",
     ),
 
   phone: z
@@ -107,27 +120,40 @@ const addressSchema = z.object({
     .trim()
     .min(
       5,
-      "Enter a complete address.",
+      "Enter a complete delivery address.",
+    )
+    .max(
+      250,
+      "Address line 1 must contain no more than 250 characters.",
     ),
 
   addressLine2: z
     .string()
-    .trim(),
+    .trim()
+    .max(
+      250,
+      "Address line 2 must contain no more than 250 characters.",
+    ),
 
   city: z
     .string()
     .trim()
     .min(
       2,
-      "Enter the city.",
+      "City must contain at least 2 characters.",
+    )
+    .max(
+      100,
+      "City must contain no more than 100 characters.",
     ),
 
   state: z
     .string()
     .trim()
-    .min(
-      2,
-      "Select the state.",
+    .min(2, "Select the state or union territory.")
+    .max(
+      100,
+      "State must contain no more than 100 characters.",
     ),
 
   postalCode: z
@@ -135,7 +161,7 @@ const addressSchema = z.object({
     .trim()
     .regex(
       /^[1-9]\d{5}$/,
-      "Enter a valid 6-digit PIN code.",
+      "Enter a valid 6-digit Indian PIN code.",
     ),
 
   isDefault: z.boolean(),
@@ -145,29 +171,61 @@ type AddressFormValues = z.infer<
   typeof addressSchema
 >;
 
+type AddressLoadStatus =
+  | "loading"
+  | "loaded"
+  | "error";
+
+type Operation =
+  | "saving"
+  | "deleting"
+  | "default"
+  | null;
+
+type Feedback = {
+  type: "success" | "error" | "warning";
+  title: string;
+  message: string;
+} | null;
+
+type EditorAction =
+  | { type: "new" }
+  | { type: "edit"; address: Address }
+  | { type: "close" };
+
 type FieldErrorMessageProps = {
   error?: FieldError;
+  id: string;
 };
 
 function FieldErrorMessage({
   error,
+  id,
 }: FieldErrorMessageProps) {
   if (!error?.message) {
     return null;
   }
 
   return (
-    <p className="mt-1 text-sm text-red-600">
+    <p
+      id={id}
+      role="alert"
+      className="mt-2 flex items-start gap-1.5 text-sm text-destructive"
+    >
+      <AlertCircle
+        aria-hidden="true"
+        className="mt-0.5 size-4 shrink-0"
+      />
       {error.message}
     </p>
   );
 }
 
 const inputClassName =
-  "mt-2 h-11 w-full rounded-lg border bg-background px-3 text-sm outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/20";
+  "mt-2 h-12 w-full min-w-0 rounded-xl border border-white/10 bg-black/20 px-4 text-sm text-foreground outline-none transition-colors placeholder:text-muted-foreground focus-visible:border-primary/70 focus-visible:ring-2 focus-visible:ring-primary/30 disabled:cursor-not-allowed disabled:opacity-60 motion-reduce:transition-none aria-invalid:border-destructive/70 aria-invalid:ring-2 aria-invalid:ring-destructive/20";
 
 const emptyFormValues: AddressFormValues = {
-  label: "Home",
+  label: "",
   recipientName: "",
   phone: "",
   addressLine1: "",
@@ -182,30 +240,17 @@ function toAddressRequest(
   values: AddressFormValues,
 ): AddressRequest {
   return {
-    label: values.label,
-
-    recipientName:
-      values.recipientName,
-
+    label: values.label || null,
+    recipientName: values.recipientName,
     phone: values.phone,
-
-    addressLine1:
-      values.addressLine1,
-
+    addressLine1: values.addressLine1,
     addressLine2:
       values.addressLine2 || null,
-
     city: values.city,
-
     state: values.state,
-
-    postalCode:
-      values.postalCode,
-
+    postalCode: values.postalCode,
     country: "India",
-
-    isDefault:
-      values.isDefault,
+    isDefault: values.isDefault,
   };
 }
 
@@ -218,42 +263,80 @@ function getErrorMessage(
     : fallbackMessage;
 }
 
+function sortAddresses(
+  addresses: Address[],
+): Address[] {
+  return [...addresses].sort((left, right) => {
+    if (left.isDefault !== right.isDefault) {
+      return left.isDefault ? -1 : 1;
+    }
+
+    return left.createdAt.localeCompare(
+      right.createdAt,
+    );
+  });
+}
+
+function reconcileConfirmedAddress(
+  addresses: Address[],
+  confirmedAddress: Address,
+): Address[] {
+  const reconciled = addresses.map((address) =>
+    address.id === confirmedAddress.id
+      ? confirmedAddress
+      : confirmedAddress.isDefault
+        ? { ...address, isDefault: false }
+        : address,
+  );
+
+  if (
+    !reconciled.some(
+      (address) =>
+        address.id === confirmedAddress.id,
+    )
+  ) {
+    reconciled.push(confirmedAddress);
+  }
+
+  return sortAddresses(reconciled);
+}
+
 export default function AddressBook() {
-  const [
-    addresses,
-    setAddresses,
-  ] = useState<Address[]>([]);
+  const [addresses, setAddresses] =
+    useState<Address[]>([]);
+  const [loadStatus, setLoadStatus] =
+    useState<AddressLoadStatus>("loading");
+  const [loadError, setLoadError] =
+    useState<string | null>(null);
+  const [formIsOpen, setFormIsOpen] =
+    useState(false);
+  const [editingAddressId, setEditingAddressId] =
+    useState<string | null>(null);
+  const [operation, setOperation] =
+    useState<Operation>(null);
+  const [operationTargetId, setOperationTargetId] =
+    useState<string | null>(null);
+  const [feedback, setFeedback] =
+    useState<Feedback>(null);
+  const [deleteTarget, setDeleteTarget] =
+    useState<Address | null>(null);
+  const [pendingEditorAction, setPendingEditorAction] =
+    useState<EditorAction | null>(null);
 
-  const [
-    isLoading,
-    setIsLoading,
-  ] = useState(true);
-
-  const [
-    formIsOpen,
-    setFormIsOpen,
-  ] = useState(false);
-
-  const [
-    editingAddressId,
-    setEditingAddressId,
-  ] = useState<string | null>(
-    null,
-  );
-
-  const [
-    deletingAddressId,
-    setDeletingAddressId,
-  ] = useState<string | null>(
-    null,
-  );
-
-  const [
-    settingDefaultAddressId,
-    setSettingDefaultAddressId,
-  ] = useState<string | null>(
-    null,
-  );
+  const requestGenerationReference = useRef(0);
+  const mutationInFlightReference = useRef(false);
+  const editorHeadingReference =
+    useRef<HTMLHeadingElement>(null);
+  const addButtonReference =
+    useRef<HTMLButtonElement>(null);
+  const editorReturnFocusReference =
+    useRef<HTMLElement | null>(null);
+  const deleteReturnFocusReference =
+    useRef<HTMLElement | null>(null);
+  const deleteDialogReference =
+    useRef<HTMLDialogElement>(null);
+  const discardDialogReference =
+    useRef<HTMLDialogElement>(null);
 
   const {
     register,
@@ -262,720 +345,1070 @@ export default function AddressBook() {
 
     formState: {
       errors,
+      isDirty,
       isSubmitting,
     },
   } = useForm<AddressFormValues>({
-    resolver: zodResolver(
-      addressSchema,
-    ),
-
-    defaultValues:
-      emptyFormValues,
+    resolver: zodResolver(addressSchema),
+    defaultValues: emptyFormValues,
   });
 
   useEffect(() => {
+    const requestGeneration =
+      ++requestGenerationReference.current;
     let requestIsActive = true;
 
     void getAccountAddresses()
       .then((response) => {
-        if (!requestIsActive) {
+        if (
+          !requestIsActive ||
+          requestGeneration !==
+            requestGenerationReference.current
+        ) {
           return;
         }
 
-        setAddresses(
-          response.addresses,
-        );
+        setAddresses(response.addresses);
+        setLoadStatus("loaded");
+        setLoadError(null);
       })
       .catch((error: unknown) => {
-        if (!requestIsActive) {
+        if (
+          !requestIsActive ||
+          requestGeneration !==
+            requestGenerationReference.current
+        ) {
           return;
         }
 
-        toast.error(
+        setLoadStatus("error");
+        setLoadError(
           getErrorMessage(
             error,
-            "Unable to load your addresses.",
+            "Unable to load your saved addresses.",
           ),
         );
-      })
-      .finally(() => {
-        if (!requestIsActive) {
-          return;
-        }
-
-        setIsLoading(false);
       });
 
     return () => {
       requestIsActive = false;
+      requestGenerationReference.current += 1;
     };
   }, []);
 
-  async function refreshAddresses(): Promise<void> {
-    const response =
-      await getAccountAddresses();
+  useEffect(() => {
+    if (formIsOpen) {
+      editorHeadingReference.current?.focus();
+    }
+  }, [formIsOpen, editingAddressId]);
 
-    setAddresses(
-      response.addresses,
-    );
+  useEffect(() => {
+    if (deleteTarget) {
+      deleteDialogReference.current?.showModal();
+    }
+  }, [deleteTarget]);
+
+  useEffect(() => {
+    if (pendingEditorAction) {
+      discardDialogReference.current?.showModal();
+    }
+  }, [pendingEditorAction]);
+
+  async function loadAddresses(): Promise<void> {
+    const requestGeneration =
+      ++requestGenerationReference.current;
+    setLoadStatus("loading");
+    setLoadError(null);
+
+    try {
+      const response = await getAccountAddresses();
+
+      if (
+        requestGeneration !==
+        requestGenerationReference.current
+      ) {
+        return;
+      }
+
+      setAddresses(response.addresses);
+      setLoadStatus("loaded");
+      setFeedback((currentFeedback) =>
+        currentFeedback?.type === "warning"
+          ? null
+          : currentFeedback,
+      );
+    } catch (error) {
+      if (
+        requestGeneration !==
+        requestGenerationReference.current
+      ) {
+        return;
+      }
+
+      setLoadStatus("error");
+      setLoadError(
+        getErrorMessage(
+          error,
+          "Unable to load your saved addresses.",
+        ),
+      );
+    }
   }
 
-  function openNewAddressForm() {
-    setEditingAddressId(null);
+  async function reconcileAfterMutation(
+    successMessage: string,
+  ): Promise<void> {
+    const requestGeneration =
+      ++requestGenerationReference.current;
 
+    try {
+      const response = await getAccountAddresses();
+
+      if (
+        requestGeneration !==
+        requestGenerationReference.current
+      ) {
+        return;
+      }
+
+      setAddresses(response.addresses);
+      setLoadStatus("loaded");
+      setLoadError(null);
+      setFeedback((currentFeedback) =>
+        currentFeedback?.type === "warning"
+          ? null
+          : currentFeedback,
+      );
+    } catch {
+      if (
+        requestGeneration !==
+        requestGenerationReference.current
+      ) {
+        return;
+      }
+
+      setFeedback({
+        type: "warning",
+        title: "Saved, but the list may be out of date",
+        message: `${successMessage} HotLap could not refresh the full address list. Retry the list refresh before making another change.`,
+      });
+    }
+  }
+
+  function populateEditor(address: Address) {
+    setEditingAddressId(address.id);
+    reset({
+      label: address.label ?? "",
+      recipientName: address.recipientName,
+      phone: address.phone,
+      addressLine1: address.addressLine1,
+      addressLine2: address.addressLine2 ?? "",
+      city: address.city,
+      state: address.state,
+      postalCode: address.postalCode,
+      isDefault: address.isDefault,
+    });
+    setFeedback(null);
+    setFormIsOpen(true);
+  }
+
+  function populateNewEditor() {
+    setEditingAddressId(null);
     reset({
       ...emptyFormValues,
-
-      isDefault:
-        addresses.length === 0,
+      isDefault: addresses.length === 0,
     });
-
+    setFeedback(null);
     setFormIsOpen(true);
   }
 
-  function openEditAddressForm(
-    address: Address,
-  ) {
-    setEditingAddressId(
-      address.id,
-    );
-
-    reset({
-      label:
-        address.label ??
-        "Address",
-
-      recipientName:
-        address.recipientName,
-
-      phone:
-        address.phone,
-
-      addressLine1:
-        address.addressLine1,
-
-      addressLine2:
-        address.addressLine2 ??
-        "",
-
-      city:
-        address.city,
-
-      state:
-        address.state,
-
-      postalCode:
-        address.postalCode,
-
-      isDefault:
-        address.isDefault,
-    });
-
-    setFormIsOpen(true);
-  }
-
-  function closeAddressForm() {
+  function closeEditor() {
     setFormIsOpen(false);
     setEditingAddressId(null);
+    reset(emptyFormValues);
 
-    reset(
-      emptyFormValues,
-    );
+    requestAnimationFrame(() => {
+      editorReturnFocusReference.current?.focus();
+      editorReturnFocusReference.current = null;
+    });
+  }
+
+  function applyEditorAction(action: EditorAction) {
+    if (action.type === "new") {
+      populateNewEditor();
+      return;
+    }
+
+    if (action.type === "edit") {
+      populateEditor(action.address);
+      return;
+    }
+
+    closeEditor();
+  }
+
+  function requestEditorAction(
+    action: EditorAction,
+    trigger?: HTMLElement,
+  ) {
+    if (mutationInFlightReference.current) {
+      return;
+    }
+
+    if (trigger && action.type !== "close") {
+      editorReturnFocusReference.current = trigger;
+    }
+
+    if (formIsOpen && isDirty) {
+      setPendingEditorAction(action);
+      return;
+    }
+
+    applyEditorAction(action);
+  }
+
+  function closeDiscardDialog(
+    restoreFocus = true,
+  ) {
+    discardDialogReference.current?.close();
+    setPendingEditorAction(null);
+
+    if (restoreFocus) {
+      requestAnimationFrame(() => {
+        editorReturnFocusReference.current?.focus();
+      });
+    }
   }
 
   async function saveAddress(
     values: AddressFormValues,
   ): Promise<void> {
+    setOperation("saving");
+    setFeedback(null);
+
     try {
-      const request =
-        toAddressRequest(values);
+      const request = toAddressRequest(values);
+      const response = editingAddressId
+        ? await updateAccountAddress(
+            editingAddressId,
+            request,
+          )
+        : await createAccountAddress(request);
 
-      if (editingAddressId) {
-        await updateAccountAddress(
-          editingAddressId,
-          request,
-        );
-
-        toast.success(
-          "The address has been updated.",
-        );
-      } else {
-        await createAccountAddress(
-          request,
-        );
-
-        toast.success(
-          "The address has been added.",
-        );
-      }
-
-      closeAddressForm();
-
-      await refreshAddresses();
-    } catch (error) {
-      toast.error(
-        getErrorMessage(
-          error,
-          "Unable to save the address.",
+      setAddresses((currentAddresses) =>
+        reconcileConfirmedAddress(
+          currentAddresses,
+          response.address,
         ),
       );
+
+      const successMessage = editingAddressId
+        ? "The address was updated."
+        : "The address was added.";
+
+      setFeedback({
+        type: "success",
+        title: editingAddressId
+          ? "Address updated"
+          : "Address added",
+        message: successMessage,
+      });
+      toast.success(successMessage);
+
+      setFormIsOpen(false);
+      setEditingAddressId(null);
+      reset(emptyFormValues);
+
+      requestAnimationFrame(() => {
+        editorReturnFocusReference.current?.focus();
+        editorReturnFocusReference.current = null;
+      });
+
+      await reconcileAfterMutation(successMessage);
+    } catch (error) {
+      const message = getErrorMessage(
+        error,
+        "Unable to save the address. Please try again.",
+      );
+
+      setFeedback({
+        type: "error",
+        title: "Address not saved",
+        message,
+      });
+      toast.error(message);
+    } finally {
+      mutationInFlightReference.current = false;
+      setOperation(null);
+    }
+  }
+
+  async function submitAddress(
+    event: FormEvent<HTMLFormElement>,
+  ): Promise<void> {
+    if (mutationInFlightReference.current) {
+      event.preventDefault();
+      return;
+    }
+
+    mutationInFlightReference.current = true;
+
+    try {
+      await handleSubmit(
+        saveAddress,
+        () => {
+          mutationInFlightReference.current = false;
+        },
+      )(event);
+    } catch (error) {
+      mutationInFlightReference.current = false;
+      throw error;
     }
   }
 
   async function makeDefaultAddress(
     addressId: string,
   ): Promise<void> {
-    setSettingDefaultAddressId(
-      addressId,
-    );
-
-    try {
-      await setAccountDefaultAddress(
-        addressId,
-      );
-
-      await refreshAddresses();
-
-      toast.success(
-        "Your default delivery address has been updated.",
-      );
-    } catch (error) {
-      toast.error(
-        getErrorMessage(
-          error,
-          "Unable to update the default address.",
-        ),
-      );
-    } finally {
-      setSettingDefaultAddressId(
-        null,
-      );
-    }
-  }
-
-  async function removeAddress(
-    addressId: string,
-  ): Promise<void> {
-    const confirmed =
-      window.confirm(
-        "Delete this delivery address?",
-      );
-
-    if (!confirmed) {
+    if (mutationInFlightReference.current) {
       return;
     }
 
-    setDeletingAddressId(
-      addressId,
-    );
+    mutationInFlightReference.current = true;
+    setOperation("default");
+    setOperationTargetId(addressId);
+    setFeedback(null);
 
     try {
-      await deleteAccountAddress(
-        addressId,
-      );
+      const response =
+        await setAccountDefaultAddress(addressId);
 
-      await refreshAddresses();
-
-      toast.success(
-        "The address has been deleted.",
-      );
-    } catch (error) {
-      toast.error(
-        getErrorMessage(
-          error,
-          "Unable to delete the address.",
+      setAddresses((currentAddresses) =>
+        reconcileConfirmedAddress(
+          currentAddresses,
+          response.address,
         ),
       );
-    } finally {
-      setDeletingAddressId(
-        null,
+
+      const successMessage =
+        "The default address was updated.";
+      setFeedback({
+        type: "success",
+        title: "Default updated",
+        message: successMessage,
+      });
+      toast.success(successMessage);
+
+      await reconcileAfterMutation(successMessage);
+    } catch (error) {
+      const message = getErrorMessage(
+        error,
+        "Unable to update the default address.",
       );
+      setFeedback({
+        type: "error",
+        title: "Default not updated",
+        message,
+      });
+      toast.error(message);
+    } finally {
+      mutationInFlightReference.current = false;
+      setOperation(null);
+      setOperationTargetId(null);
     }
   }
 
+  function requestDelete(
+    address: Address,
+    trigger: HTMLElement,
+  ) {
+    if (mutationInFlightReference.current) {
+      return;
+    }
+
+    deleteReturnFocusReference.current = trigger;
+    setDeleteTarget(address);
+  }
+
+  function closeDeleteDialog(
+    restoreFocus = true,
+  ) {
+    deleteDialogReference.current?.close();
+    setDeleteTarget(null);
+
+    if (restoreFocus) {
+      requestAnimationFrame(() => {
+        deleteReturnFocusReference.current?.focus();
+      });
+    }
+  }
+
+  async function confirmDelete(): Promise<void> {
+    if (
+      !deleteTarget ||
+      mutationInFlightReference.current
+    ) {
+      return;
+    }
+
+    mutationInFlightReference.current = true;
+    setOperation("deleting");
+    setFeedback(null);
+
+    const addressBeingDeleted = deleteTarget;
+
+    try {
+      await deleteAccountAddress(
+        addressBeingDeleted.id,
+      );
+
+      setAddresses((currentAddresses) =>
+        currentAddresses.filter(
+          (address) =>
+            address.id !== addressBeingDeleted.id,
+        ),
+      );
+
+      const successMessage =
+        "The address was deleted.";
+      setFeedback({
+        type: "success",
+        title: "Address deleted",
+        message: successMessage,
+      });
+      toast.success(successMessage);
+
+      deleteReturnFocusReference.current =
+        addButtonReference.current;
+      closeDeleteDialog(true);
+
+      await reconcileAfterMutation(successMessage);
+    } catch (error) {
+      const message = getErrorMessage(
+        error,
+        "Unable to delete the address.",
+      );
+      setFeedback({
+        type: "error",
+        title: "Address not deleted",
+        message,
+      });
+      toast.error(message);
+      closeDeleteDialog(true);
+    } finally {
+      mutationInFlightReference.current = false;
+      setOperation(null);
+    }
+  }
+
+  const editorIsCurrentDefault =
+    editingAddressId !== null &&
+    addresses.some(
+      (address) =>
+        address.id === editingAddressId &&
+        address.isDefault,
+    );
+  const editorIsFirstAddress =
+    editingAddressId === null &&
+    addresses.length === 0;
+  const interfaceIsBusy = operation !== null;
+  const addressChangesAreDisabled =
+    interfaceIsBusy || feedback?.type === "warning";
+  const storedEditorState = editingAddressId
+    ? addresses.find(
+        (address) =>
+          address.id === editingAddressId,
+      )?.state
+    : undefined;
+  const storedEditorStateNeedsOption =
+    Boolean(storedEditorState) &&
+    !indianStates.includes(
+      storedEditorState as string,
+    );
+
+  const fieldIds = {
+    labelHelp: "address-label-help",
+    labelError: "address-label-error",
+    recipientError: "address-recipient-error",
+    phoneHelp: "address-phone-help",
+    phoneError: "address-phone-error",
+    postalHelp: "address-postal-help",
+    postalError: "address-postal-error",
+    line1Error: "address-line-1-error",
+    line2Help: "address-line-2-help",
+    line2Error: "address-line-2-error",
+    cityError: "address-city-error",
+    stateError: "address-state-error",
+    defaultHelp: "address-default-help",
+  };
+
   return (
-    <div>
-      <div className="flex justify-end">
+    <div className="min-w-0">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <p className="text-sm leading-6 text-muted-foreground">
+          Saved addresses are available when choosing order details.
+        </p>
         <Button
+          ref={addButtonReference}
           type="button"
-          onClick={
-            openNewAddressForm
+          size="lg"
+          disabled={
+            addressChangesAreDisabled ||
+            loadStatus !== "loaded"
           }
+          className="w-full sm:w-auto"
+          onClick={(event) => {
+            requestEditorAction(
+              { type: "new" },
+              event.currentTarget,
+            );
+          }}
         >
-          <Plus className="h-4 w-4" />
+          <Plus aria-hidden="true" className="size-4" />
           Add Address
         </Button>
       </div>
 
+      {feedback && (
+        <div
+          role={feedback.type === "error" ? "alert" : "status"}
+          aria-live={feedback.type === "error" ? "assertive" : "polite"}
+          className={`mt-6 flex items-start gap-3 rounded-2xl border p-4 text-sm ${
+            feedback.type === "error"
+              ? "border-destructive/35 bg-destructive/10 text-destructive"
+              : feedback.type === "warning"
+                ? "border-amber-500/35 bg-amber-500/10 text-amber-300"
+                : "border-emerald-500/30 bg-emerald-500/10 text-emerald-300"
+          }`}
+        >
+          {feedback.type === "success" ? (
+            <CheckCircle2 aria-hidden="true" className="mt-0.5 size-5 shrink-0" />
+          ) : feedback.type === "warning" ? (
+            <AlertTriangle aria-hidden="true" className="mt-0.5 size-5 shrink-0" />
+          ) : (
+            <AlertCircle aria-hidden="true" className="mt-0.5 size-5 shrink-0" />
+          )}
+          <div className="min-w-0">
+            <p className="font-semibold">{feedback.title}</p>
+            <p className="mt-1 break-words leading-6 opacity-85">
+              {feedback.message}
+            </p>
+            {feedback.type === "warning" && (
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                disabled={interfaceIsBusy}
+                className="mt-3"
+                onClick={() =>
+                  void reconcileAfterMutation(
+                    "The previous address change was confirmed.",
+                  )
+                }
+              >
+                <RefreshCw aria-hidden="true" className="size-4" />
+                Refresh List
+              </Button>
+            )}
+          </div>
+        </div>
+      )}
+
       {formIsOpen && (
         <form
-          onSubmit={handleSubmit(
-            saveAddress,
-          )}
+          onSubmit={submitAddress}
+          onChange={() => {
+            if (feedback?.type === "success") {
+              setFeedback(null);
+            }
+          }}
           noValidate
-          className="mt-6 rounded-2xl border bg-card p-6"
+          aria-busy={operation === "saving" || isSubmitting}
+          className="mt-6 overflow-hidden rounded-3xl border border-white/10 bg-card/90 shadow-[0_20px_70px_rgba(0,0,0,0.22)]"
         >
-          <div className="flex items-start justify-between gap-5">
-            <div>
-              <h2 className="text-xl font-semibold">
-                {editingAddressId
-                  ? "Edit Address"
-                  : "Add Address"}
+          <div className="flex min-w-0 items-start justify-between gap-4 border-b border-white/10 bg-gradient-to-r from-primary/10 via-transparent to-transparent px-5 py-5 sm:px-7">
+            <div className="min-w-0">
+              <h2
+                ref={editorHeadingReference}
+                tabIndex={-1}
+                className="break-words text-xl font-semibold outline-none focus-visible:ring-2 focus-visible:ring-primary/60"
+              >
+                {editingAddressId ? "Edit Address" : "Add Address"}
               </h2>
-
-              <p className="mt-1 text-sm text-muted-foreground">
-                Enter an Indian delivery address.
+              <p className="mt-1 text-sm leading-6 text-muted-foreground">
+                Enter an Indian address. Fields marked required must be completed.
               </p>
             </div>
 
             <Button
               type="button"
               variant="ghost"
-              size="icon"
-              aria-label="Close address form"
-              onClick={
-                closeAddressForm
-              }
+              size="icon-lg"
+              aria-label="Close address editor"
+              disabled={interfaceIsBusy}
+              onClick={(event) => {
+                requestEditorAction(
+                  { type: "close" },
+                  event.currentTarget,
+                );
+              }}
             >
-              <X className="h-5 w-5" />
+              <X aria-hidden="true" className="size-5" />
             </Button>
           </div>
 
-          <div className="mt-6 grid gap-5 sm:grid-cols-2">
-            <div>
-              <label
-                htmlFor="address-label"
-                className="text-sm font-medium"
-              >
-                Label
-              </label>
+          <div className="p-5 sm:p-7">
+            <div className="grid min-w-0 gap-6 sm:grid-cols-2">
+              <div className="min-w-0">
+                <label htmlFor="address-label" className="text-sm font-medium">
+                  Label <span className="text-muted-foreground">(optional)</span>
+                </label>
+                <input
+                  id="address-label"
+                  autoComplete="off"
+                  placeholder="Home or Office"
+                  aria-invalid={errors.label ? true : undefined}
+                  aria-describedby={errors.label ? `${fieldIds.labelHelp} ${fieldIds.labelError}` : fieldIds.labelHelp}
+                  className={inputClassName}
+                  {...register("label")}
+                />
+                <p id={fieldIds.labelHelp} className="mt-2 text-xs leading-5 text-muted-foreground">
+                  A short name to help you identify this address.
+                </p>
+                <FieldErrorMessage id={fieldIds.labelError} error={errors.label} />
+              </div>
 
-              <input
-                id="address-label"
-                placeholder="Home or Office"
-                className={
-                  inputClassName
-                }
-                {...register("label")}
-              />
+              <div className="min-w-0">
+                <label htmlFor="address-recipient" className="text-sm font-medium">
+                  Recipient name <span className="text-primary">(required)</span>
+                </label>
+                <input
+                  id="address-recipient"
+                  autoComplete="name"
+                  aria-invalid={errors.recipientName ? true : undefined}
+                  aria-describedby={errors.recipientName ? fieldIds.recipientError : undefined}
+                  className={inputClassName}
+                  {...register("recipientName")}
+                />
+                <FieldErrorMessage id={fieldIds.recipientError} error={errors.recipientName} />
+              </div>
 
-              <FieldErrorMessage
-                error={errors.label}
-              />
-            </div>
+              <div className="min-w-0">
+                <label htmlFor="address-phone" className="text-sm font-medium">
+                  Mobile number <span className="text-primary">(required)</span>
+                </label>
+                <input
+                  id="address-phone"
+                  type="tel"
+                  inputMode="numeric"
+                  autoComplete="tel-national"
+                  placeholder="10-digit Indian mobile number"
+                  aria-invalid={errors.phone ? true : undefined}
+                  aria-describedby={errors.phone ? `${fieldIds.phoneHelp} ${fieldIds.phoneError}` : fieldIds.phoneHelp}
+                  className={inputClassName}
+                  {...register("phone")}
+                />
+                <p id={fieldIds.phoneHelp} className="mt-2 text-xs leading-5 text-muted-foreground">
+                  Enter 10 digits beginning with 6–9.
+                </p>
+                <FieldErrorMessage id={fieldIds.phoneError} error={errors.phone} />
+              </div>
 
-            <div>
-              <label
-                htmlFor="address-recipient"
-                className="text-sm font-medium"
-              >
-                Recipient name
-              </label>
+              <div className="min-w-0">
+                <label htmlFor="address-postal-code" className="text-sm font-medium">
+                  PIN code <span className="text-primary">(required)</span>
+                </label>
+                <input
+                  id="address-postal-code"
+                  inputMode="numeric"
+                  autoComplete="postal-code"
+                  aria-invalid={errors.postalCode ? true : undefined}
+                  aria-describedby={errors.postalCode ? `${fieldIds.postalHelp} ${fieldIds.postalError}` : fieldIds.postalHelp}
+                  className={inputClassName}
+                  {...register("postalCode")}
+                />
+                <p id={fieldIds.postalHelp} className="mt-2 text-xs leading-5 text-muted-foreground">
+                  Enter a 6-digit Indian PIN code.
+                </p>
+                <FieldErrorMessage id={fieldIds.postalError} error={errors.postalCode} />
+              </div>
 
-              <input
-                id="address-recipient"
-                autoComplete="name"
-                className={
-                  inputClassName
-                }
-                {...register(
-                  "recipientName",
-                )}
-              />
+              <div className="min-w-0 sm:col-span-2">
+                <label htmlFor="address-line-1" className="text-sm font-medium">
+                  Address line 1 <span className="text-primary">(required)</span>
+                </label>
+                <input
+                  id="address-line-1"
+                  autoComplete="address-line1"
+                  aria-invalid={errors.addressLine1 ? true : undefined}
+                  aria-describedby={errors.addressLine1 ? fieldIds.line1Error : undefined}
+                  className={inputClassName}
+                  {...register("addressLine1")}
+                />
+                <FieldErrorMessage id={fieldIds.line1Error} error={errors.addressLine1} />
+              </div>
 
-              <FieldErrorMessage
-                error={
-                  errors.recipientName
-                }
-              />
-            </div>
+              <div className="min-w-0 sm:col-span-2">
+                <label htmlFor="address-line-2" className="text-sm font-medium">
+                  Address line 2 <span className="text-muted-foreground">(optional)</span>
+                </label>
+                <input
+                  id="address-line-2"
+                  autoComplete="address-line2"
+                  placeholder="Apartment, building or landmark"
+                  aria-invalid={errors.addressLine2 ? true : undefined}
+                  aria-describedby={errors.addressLine2 ? `${fieldIds.line2Help} ${fieldIds.line2Error}` : fieldIds.line2Help}
+                  className={inputClassName}
+                  {...register("addressLine2")}
+                />
+                <p id={fieldIds.line2Help} className="mt-2 text-xs leading-5 text-muted-foreground">
+                  Blank values are saved as no second address line.
+                </p>
+                <FieldErrorMessage id={fieldIds.line2Error} error={errors.addressLine2} />
+              </div>
 
-            <div>
-              <label
-                htmlFor="address-phone"
-                className="text-sm font-medium"
-              >
-                Mobile number
-              </label>
+              <div className="min-w-0">
+                <label htmlFor="address-city" className="text-sm font-medium">
+                  City <span className="text-primary">(required)</span>
+                </label>
+                <input
+                  id="address-city"
+                  autoComplete="address-level2"
+                  aria-invalid={errors.city ? true : undefined}
+                  aria-describedby={errors.city ? fieldIds.cityError : undefined}
+                  className={inputClassName}
+                  {...register("city")}
+                />
+                <FieldErrorMessage id={fieldIds.cityError} error={errors.city} />
+              </div>
 
-              <input
-                id="address-phone"
-                type="tel"
-                inputMode="numeric"
-                autoComplete="tel"
-                className={
-                  inputClassName
-                }
-                {...register("phone")}
-              />
-
-              <FieldErrorMessage
-                error={errors.phone}
-              />
-            </div>
-
-            <div>
-              <label
-                htmlFor="address-postal-code"
-                className="text-sm font-medium"
-              >
-                PIN code
-              </label>
-
-              <input
-                id="address-postal-code"
-                inputMode="numeric"
-                autoComplete="postal-code"
-                className={
-                  inputClassName
-                }
-                {...register(
-                  "postalCode",
-                )}
-              />
-
-              <FieldErrorMessage
-                error={
-                  errors.postalCode
-                }
-              />
-            </div>
-
-            <div className="sm:col-span-2">
-              <label
-                htmlFor="address-line-1"
-                className="text-sm font-medium"
-              >
-                Address
-              </label>
-
-              <input
-                id="address-line-1"
-                autoComplete="address-line1"
-                className={
-                  inputClassName
-                }
-                {...register(
-                  "addressLine1",
-                )}
-              />
-
-              <FieldErrorMessage
-                error={
-                  errors.addressLine1
-                }
-              />
-            </div>
-
-            <div className="sm:col-span-2">
-              <label
-                htmlFor="address-line-2"
-                className="text-sm font-medium"
-              >
-                Apartment, building or landmark
-
-                <span className="ml-1 text-muted-foreground">
-                  (optional)
-                </span>
-              </label>
-
-              <input
-                id="address-line-2"
-                autoComplete="address-line2"
-                className={
-                  inputClassName
-                }
-                {...register(
-                  "addressLine2",
-                )}
-              />
-            </div>
-
-            <div>
-              <label
-                htmlFor="address-city"
-                className="text-sm font-medium"
-              >
-                City
-              </label>
-
-              <input
-                id="address-city"
-                autoComplete="address-level2"
-                className={
-                  inputClassName
-                }
-                {...register("city")}
-              />
-
-              <FieldErrorMessage
-                error={errors.city}
-              />
-            </div>
-
-            <div>
-              <label
-                htmlFor="address-state"
-                className="text-sm font-medium"
-              >
-                State / Union Territory
-              </label>
-
-              <select
-                id="address-state"
-                autoComplete="address-level1"
-                className={
-                  inputClassName
-                }
-                {...register("state")}
-              >
-                <option value="">
-                  Select state
-                </option>
-
-                {indianStates.map(
-                  (state) => (
-                    <option
-                      key={state}
-                      value={state}
-                    >
-                      {state}
+              <div className="min-w-0">
+                <label htmlFor="address-state" className="text-sm font-medium">
+                  State / Union Territory <span className="text-primary">(required)</span>
+                </label>
+                <select
+                  id="address-state"
+                  autoComplete="address-level1"
+                  aria-invalid={errors.state ? true : undefined}
+                  aria-describedby={errors.state ? fieldIds.stateError : undefined}
+                  className={`${inputClassName} bg-[#0b0e11] text-foreground [color-scheme:dark] [&>option]:bg-[#101316] [&>option]:text-foreground`}
+                  {...register("state")}
+                >
+                  <option
+                    value=""
+                    className="bg-[#101316] text-muted-foreground"
+                  >
+                    Select state or union territory
+                  </option>
+                  {storedEditorStateNeedsOption && (
+                    <option value={storedEditorState}>
+                      {storedEditorState}
                     </option>
-                  ),
-                )}
-              </select>
-
-              <FieldErrorMessage
-                error={errors.state}
-              />
+                  )}
+                  {indianStates.map((state) => (
+                    <option key={state} value={state}>{state}</option>
+                  ))}
+                </select>
+                <FieldErrorMessage id={fieldIds.stateError} error={errors.state} />
+              </div>
             </div>
-          </div>
 
-          <label className="mt-6 flex items-center gap-3 text-sm">
-            <input
-              type="checkbox"
-              {...register(
-                "isDefault",
-              )}
-            />
-
-            <span>
-              Use as my default delivery address
-            </span>
-          </label>
-
-          <div className="mt-7 flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
-            <Button
-              type="button"
-              variant="outline"
-              onClick={
-                closeAddressForm
-              }
-            >
-              Cancel
-            </Button>
-
-            <Button
-              type="submit"
-              disabled={isSubmitting}
-            >
-              {isSubmitting ? (
-                <LoaderCircle className="h-4 w-4 animate-spin" />
+            <div className="mt-6 rounded-2xl border border-white/10 bg-black/15 p-4">
+              {editorIsCurrentDefault || editorIsFirstAddress ? (
+                <>
+                  <input type="hidden" {...register("isDefault")} />
+                  <div className="flex items-start gap-3">
+                    <CheckCircle2 aria-hidden="true" className="mt-0.5 size-5 shrink-0 text-primary" />
+                    <div className="min-w-0">
+                      <p className="text-sm font-semibold">
+                        {editorIsFirstAddress ? "This will be your default address" : "This is your current default address"}
+                      </p>
+                      <p id={fieldIds.defaultHelp} className="mt-1 text-sm leading-6 text-muted-foreground">
+                        {editorIsFirstAddress
+                          ? "The backend automatically makes the first saved address the default."
+                          : "Choose Set as Default on another saved address before this one can stop being the default."}
+                      </p>
+                    </div>
+                  </div>
+                </>
               ) : (
-                <Check className="h-4 w-4" />
+                <label className="flex min-h-11 cursor-pointer items-start gap-3 text-sm">
+                  <input
+                    type="checkbox"
+                    aria-describedby={fieldIds.defaultHelp}
+                    className="mt-1 size-5 accent-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/60"
+                    {...register("isDefault")}
+                  />
+                  <span>
+                    <span className="font-semibold">Use as my default address</span>
+                    <span id={fieldIds.defaultHelp} className="mt-1 block leading-6 text-muted-foreground">
+                      HotLap confirms the default change with the server after saving.
+                    </span>
+                  </span>
+                </label>
               )}
+            </div>
 
-              {isSubmitting
-                ? "Saving..."
-                : editingAddressId
-                  ? "Update Address"
-                  : "Save Address"}
-            </Button>
+            <div className="mt-7 flex flex-col-reverse gap-3 border-t border-white/10 pt-6 sm:flex-row sm:items-center sm:justify-between">
+              <p aria-live="polite" className="text-sm text-muted-foreground">
+                {operation === "saving"
+                  ? "Saving the address…"
+                  : isDirty
+                    ? "You have unsaved changes."
+                    : "No unsaved changes."}
+              </p>
+              <div className="flex flex-col-reverse gap-3 sm:flex-row">
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="lg"
+                  disabled={interfaceIsBusy}
+                  onClick={(event) => {
+                    requestEditorAction({ type: "close" }, event.currentTarget);
+                  }}
+                >
+                  Cancel
+                </Button>
+                <Button
+                  type="submit"
+                  size="lg"
+                  disabled={!isDirty || interfaceIsBusy || isSubmitting}
+                >
+                  {operation === "saving" || isSubmitting ? (
+                    <LoaderCircle aria-hidden="true" className="size-4 animate-spin motion-reduce:animate-none" />
+                  ) : (
+                    <Check aria-hidden="true" className="size-4" />
+                  )}
+                  {operation === "saving" || isSubmitting
+                    ? "Saving…"
+                    : editingAddressId
+                      ? "Update Address"
+                      : "Save Address"}
+                </Button>
+              </div>
+            </div>
           </div>
         </form>
       )}
 
-      {isLoading ? (
-        <div className="mt-6 flex min-h-52 items-center justify-center rounded-2xl border">
+      {loadStatus === "loading" ? (
+        <div role="status" aria-live="polite" className="mt-6 flex min-h-56 items-center justify-center rounded-3xl border border-white/10 bg-card/70 p-8">
           <div className="text-center">
-            <LoaderCircle className="mx-auto h-7 w-7 animate-spin text-red-600" />
-
-            <p className="mt-3 text-sm text-muted-foreground">
-              Loading your addresses...
-            </p>
+            <LoaderCircle aria-hidden="true" className="mx-auto size-7 animate-spin text-primary motion-reduce:animate-none" />
+            <p className="mt-4 text-sm text-muted-foreground">Loading your saved addresses…</p>
           </div>
         </div>
+      ) : loadStatus === "error" ? (
+        <div role="alert" className="mt-6 rounded-3xl border border-destructive/35 bg-destructive/10 px-6 py-10 text-center sm:px-8">
+          <AlertCircle aria-hidden="true" className="mx-auto size-9 text-destructive" />
+          <h2 className="mt-5 text-xl font-semibold">Addresses could not be loaded</h2>
+          <p className="mx-auto mt-2 max-w-xl break-words text-sm leading-6 text-muted-foreground">
+            {loadError ?? "Unable to load your saved addresses."}
+          </p>
+          <Button type="button" size="lg" className="mt-6" onClick={() => void loadAddresses()}>
+            <RefreshCw aria-hidden="true" className="size-4" />
+            Retry
+          </Button>
+        </div>
       ) : addresses.length > 0 ? (
-        <div className="mt-6 grid gap-5 xl:grid-cols-2">
-          {addresses.map(
-            (address) => (
-              <article
-                key={address.id}
-                className="rounded-2xl border bg-card p-6"
-              >
-                <div className="flex items-start justify-between gap-5">
-                  <div className="flex items-center gap-3">
-                    <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-red-100 text-red-700">
-                      {address.label
-                        ?.toLowerCase() ===
-                      "home" ? (
-                        <Home className="h-5 w-5" />
-                      ) : (
-                        <MapPin className="h-5 w-5" />
-                      )}
-                    </div>
-
-                    <div>
-                      <h2 className="font-semibold">
-                        {address.label ??
-                          "Address"}
-                      </h2>
-
-                      {address.isDefault && (
-                        <p className="mt-1 text-xs font-medium text-green-700">
-                          Default delivery address
-                        </p>
-                      )}
-                    </div>
-                  </div>
-
-                  <div className="flex gap-1">
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="icon"
-                      aria-label={`Edit ${
-                        address.label ??
-                        "address"
-                      }`}
-                      onClick={() =>
-                        openEditAddressForm(
-                          address,
-                        )
-                      }
-                    >
-                      <Pencil className="h-4 w-4" />
-                    </Button>
-
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="icon"
-                      disabled={
-                        deletingAddressId ===
-                        address.id
-                      }
-                      aria-label={`Delete ${
-                        address.label ??
-                        "address"
-                      }`}
-                      onClick={() => {
-                        void removeAddress(
-                          address.id,
-                        );
-                      }}
-                    >
-                      {deletingAddressId ===
-                      address.id ? (
-                        <LoaderCircle className="h-4 w-4 animate-spin" />
-                      ) : (
-                        <Trash2 className="h-4 w-4" />
-                      )}
-                    </Button>
+        <div className="mt-6 grid min-w-0 gap-5 xl:grid-cols-2">
+          {addresses.map((address) => (
+            <article key={address.id} className="flex min-w-0 flex-col overflow-hidden rounded-3xl border border-white/10 bg-card/90 p-5 shadow-[0_16px_50px_rgba(0,0,0,0.18)] sm:p-6">
+              <div className="flex min-w-0 flex-wrap items-start justify-between gap-4">
+                <div className="flex min-w-0 items-start gap-3">
+                  <span className="flex size-11 shrink-0 items-center justify-center rounded-xl border border-primary/25 bg-primary/10 text-primary">
+                    {address.label?.toLowerCase() === "home" ? (
+                      <Home aria-hidden="true" className="size-5" />
+                    ) : (
+                      <MapPin aria-hidden="true" className="size-5" />
+                    )}
+                  </span>
+                  <div className="min-w-0">
+                    <h2 className="break-words font-semibold">{address.label || "Saved Address"}</h2>
+                    {address.isDefault && (
+                      <span className="mt-2 inline-flex rounded-full border border-primary/25 bg-primary/10 px-2.5 py-1 text-[0.68rem] font-bold uppercase tracking-[0.12em] text-primary">
+                        Default
+                      </span>
+                    )}
                   </div>
                 </div>
 
-                <address className="mt-6 not-italic leading-7 text-muted-foreground">
-                  <p className="font-medium text-foreground">
-                    {
-                      address.recipientName
-                    }
-                  </p>
+                <div className="flex shrink-0 flex-wrap gap-1">
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon-lg"
+                    disabled={addressChangesAreDisabled}
+                    aria-label={`Edit ${address.label || "saved address"}`}
+                    onClick={(event) => {
+                      requestEditorAction({ type: "edit", address }, event.currentTarget);
+                    }}
+                  >
+                    <Pencil aria-hidden="true" className="size-4" />
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon-lg"
+                    disabled={addressChangesAreDisabled}
+                    aria-label={`Delete ${address.label || "saved address"}`}
+                    onClick={(event) => requestDelete(address, event.currentTarget)}
+                  >
+                    <Trash2 aria-hidden="true" className="size-4" />
+                  </Button>
+                </div>
+              </div>
 
-                  <p>
-                    {
-                      address.addressLine1
-                    }
-                  </p>
+              <address className="mt-6 min-w-0 flex-1 not-italic text-sm leading-7 text-muted-foreground">
+                <p className="break-words font-medium text-foreground">{address.recipientName}</p>
+                <p className="break-words">{address.addressLine1}</p>
+                {address.addressLine2 && <p className="break-words">{address.addressLine2}</p>}
+                <p className="break-words">{address.city}, {address.state} {address.postalCode}</p>
+                <p className="break-words">{address.country}</p>
+                <p className="mt-2 break-all">+91 {address.phone}</p>
+              </address>
 
-                  {address.addressLine2 && (
-                    <p>
-                      {
-                        address.addressLine2
-                      }
-                    </p>
-                  )}
-
-                  <p>
-                    {address.city},{" "}
-                    {address.state}{" "}
-                    {address.postalCode}
-                  </p>
-
-                  <p>{address.country}</p>
-
-                  <p className="mt-2">
-                    +91 {address.phone}
-                  </p>
-                </address>
-
-                {!address.isDefault && (
+              {!address.isDefault && (
+                <div className="mt-6 border-t border-white/10 pt-5">
                   <Button
                     type="button"
                     variant="outline"
-                    size="sm"
-                    className="mt-6"
-                    disabled={
-                      settingDefaultAddressId ===
-                      address.id
-                    }
-                    onClick={() => {
-                      void makeDefaultAddress(
-                        address.id,
-                      );
-                    }}
+                    size="lg"
+                    disabled={addressChangesAreDisabled}
+                    className="w-full sm:w-auto"
+                    onClick={() => void makeDefaultAddress(address.id)}
                   >
-                    {settingDefaultAddressId ===
-                    address.id ? (
-                      <LoaderCircle className="h-4 w-4 animate-spin" />
+                    {operation === "default" &&
+                    operationTargetId === address.id ? (
+                      <LoaderCircle aria-hidden="true" className="size-4 animate-spin motion-reduce:animate-none" />
                     ) : (
-                      <Check className="h-4 w-4" />
+                      <Check aria-hidden="true" className="size-4" />
                     )}
-
-                    {settingDefaultAddressId ===
-                    address.id
-                      ? "Updating..."
+                    {operation === "default" &&
+                    operationTargetId === address.id
+                      ? "Updating…"
                       : "Set as Default"}
                   </Button>
-                )}
-              </article>
-            ),
-          )}
+                </div>
+              )}
+            </article>
+          ))}
         </div>
       ) : (
-        <div className="mt-6 rounded-3xl border border-dashed px-6 py-16 text-center">
-          <MapPin className="mx-auto h-8 w-8 text-muted-foreground" />
-
-          <h2 className="mt-5 text-xl font-semibold">
-            No saved addresses
-          </h2>
-
-          <p className="mt-2 text-muted-foreground">
-            Add a delivery address to make checkout faster.
+        <div className="mt-6 rounded-3xl border border-dashed border-primary/25 bg-gradient-to-br from-card/90 to-primary/[0.04] px-6 py-14 text-center sm:py-16">
+          <span className="mx-auto flex size-14 items-center justify-center rounded-2xl border border-primary/25 bg-primary/10 text-primary">
+            <MapPin aria-hidden="true" className="size-7" />
+          </span>
+          <h2 className="mt-5 text-xl font-semibold">No saved addresses</h2>
+          <p className="mx-auto mt-2 max-w-lg text-sm leading-6 text-muted-foreground">
+            Add your first address. The backend will make it your default automatically.
           </p>
-
           <Button
             type="button"
-            className="mt-6"
-            onClick={
-              openNewAddressForm
-            }
+            size="lg"
+            disabled={addressChangesAreDisabled}
+            className="mt-6 w-full sm:w-auto"
+            onClick={(event) => requestEditorAction({ type: "new" }, event.currentTarget)}
           >
-            <Plus className="h-4 w-4" />
+            <Plus aria-hidden="true" className="size-4" />
             Add Your First Address
           </Button>
         </div>
       )}
+
+      <dialog
+        ref={deleteDialogReference}
+        aria-labelledby="delete-address-title"
+        aria-describedby="delete-address-description"
+        aria-busy={operation === "deleting"}
+        onCancel={(event) => {
+          if (operation === "deleting") {
+            event.preventDefault();
+            return;
+          }
+          event.preventDefault();
+          closeDeleteDialog(true);
+        }}
+        className="m-auto max-h-[calc(100dvh-2rem)] w-[calc(100%-2rem)] max-w-lg overflow-y-auto rounded-3xl border border-white/10 bg-card p-0 text-foreground shadow-2xl backdrop:bg-black/75 backdrop:backdrop-blur-sm"
+      >
+        <div className="p-6 sm:p-7">
+          <span className="flex size-12 items-center justify-center rounded-2xl bg-destructive/10 text-destructive">
+            <Trash2 aria-hidden="true" className="size-5" />
+          </span>
+          <h2 id="delete-address-title" className="mt-5 break-words text-xl font-semibold">
+            Delete {deleteTarget?.label || "this saved address"}?
+          </h2>
+          <p id="delete-address-description" className="mt-3 break-words text-sm leading-6 text-muted-foreground">
+            {deleteTarget?.recipientName ? `${deleteTarget.recipientName} — ${deleteTarget.addressLine1}. ` : ""}
+            This removes the address from your account. If it is the default, the backend will choose the next saved address.
+          </p>
+          <div className="mt-7 flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
+            <Button
+              autoFocus
+              type="button"
+              variant="outline"
+              size="lg"
+              disabled={operation === "deleting"}
+              onClick={() => closeDeleteDialog(true)}
+            >
+              Cancel
+            </Button>
+            <Button
+              type="button"
+              variant="destructive"
+              size="lg"
+              disabled={operation === "deleting"}
+              onClick={() => void confirmDelete()}
+            >
+              {operation === "deleting" ? (
+                <LoaderCircle aria-hidden="true" className="size-4 animate-spin motion-reduce:animate-none" />
+              ) : (
+                <Trash2 aria-hidden="true" className="size-4" />
+              )}
+              {operation === "deleting" ? "Deleting…" : "Delete Address"}
+            </Button>
+          </div>
+        </div>
+      </dialog>
+
+      <dialog
+        ref={discardDialogReference}
+        aria-labelledby="discard-address-title"
+        aria-describedby="discard-address-description"
+        onCancel={(event) => {
+          event.preventDefault();
+          closeDiscardDialog(true);
+        }}
+        className="m-auto max-h-[calc(100dvh-2rem)] w-[calc(100%-2rem)] max-w-lg overflow-y-auto rounded-3xl border border-white/10 bg-card p-0 text-foreground shadow-2xl backdrop:bg-black/75 backdrop:backdrop-blur-sm"
+      >
+        <div className="p-6 sm:p-7">
+          <span className="flex size-12 items-center justify-center rounded-2xl bg-primary/10 text-primary">
+            <AlertTriangle aria-hidden="true" className="size-5" />
+          </span>
+          <h2 id="discard-address-title" className="mt-5 text-xl font-semibold">Discard unsaved changes?</h2>
+          <p id="discard-address-description" className="mt-3 text-sm leading-6 text-muted-foreground">
+            The information currently entered in the address editor has not been saved.
+          </p>
+          <div className="mt-7 flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
+            <Button autoFocus type="button" variant="outline" size="lg" onClick={() => closeDiscardDialog(true)}>
+              Keep Editing
+            </Button>
+            <Button
+              type="button"
+              variant="destructive"
+              size="lg"
+              onClick={() => {
+                const action = pendingEditorAction;
+                closeDiscardDialog(false);
+                if (action) {
+                  applyEditorAction(action);
+                }
+              }}
+            >
+              Discard Changes
+            </Button>
+          </div>
+        </div>
+      </dialog>
     </div>
   );
 }
