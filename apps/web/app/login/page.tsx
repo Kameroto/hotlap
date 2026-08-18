@@ -14,7 +14,7 @@ export default function LoginPage() {
     <AuthShell
       eyebrow="Welcome back"
       title="Sign in to HotLap"
-      description="Access your wishlist, orders, delivery addresses, and account preferences."
+      description="Access your wishlist, orders, delivery addresses, and account settings."
     >
       <LoginForm />
     </AuthShell>

@@ -44,7 +44,7 @@ const customerLinks = [
   },
   {
     href: "/account/preferences",
-    label: "Preferences",
+    label: "Settings",
   },
 ];
 

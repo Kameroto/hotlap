@@ -77,10 +77,10 @@ const accountActions = [
       "/account/preferences",
 
     title:
-      "Preferences",
+      "Settings",
 
     description:
-      "Manage your HotLap account preferences.",
+      "Review supported account and order settings.",
 
     icon:
       Settings,

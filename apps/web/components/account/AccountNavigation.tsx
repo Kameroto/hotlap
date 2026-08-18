@@ -42,7 +42,7 @@ const accountLinks = [
   },
   {
     href: "/account/preferences",
-    label: "Preferences",
+    label: "Settings",
     icon: Settings,
   },
   {
