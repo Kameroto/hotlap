@@ -8,6 +8,7 @@ import {
 import {
   usePathname,
   useRouter,
+  useSearchParams,
 } from "next/navigation";
 
 import {
@@ -27,6 +28,7 @@ export default function AccountGuard({
 }: AccountGuardProps) {
   const router = useRouter();
   const pathname = usePathname();
+  const searchParams = useSearchParams();
 
   const status = useAuthStore(
     (state) => state.status,
@@ -50,8 +52,15 @@ export default function AccountGuard({
       hasInitialized &&
       status === "unauthenticated"
     ) {
+      const queryString =
+        searchParams.toString();
+
       const destination =
-        encodeURIComponent(pathname);
+        encodeURIComponent(
+          queryString
+            ? `${pathname}?${queryString}`
+            : pathname,
+        );
 
       router.replace(
         `/login?next=${destination}`,
@@ -61,6 +70,7 @@ export default function AccountGuard({
     hasInitialized,
     pathname,
     router,
+    searchParams,
     status,
   ]);
 

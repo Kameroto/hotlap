@@ -86,6 +86,8 @@ const indianStates = [
   "West Bengal",
 ];
 
+const maximumSavedAddresses = 5;
+
 const addressSchema = z.object({
   label: z
     .string()
@@ -555,6 +557,13 @@ export default function AddressBook() {
       return;
     }
 
+    if (
+      action.type === "new" &&
+      addresses.length >= maximumSavedAddresses
+    ) {
+      return;
+    }
+
     if (trigger && action.type !== "close") {
       editorReturnFocusReference.current = trigger;
     }
@@ -646,6 +655,20 @@ export default function AddressBook() {
   async function submitAddress(
     event: FormEvent<HTMLFormElement>,
   ): Promise<void> {
+    if (
+      editingAddressId === null &&
+      addresses.length >= maximumSavedAddresses
+    ) {
+      event.preventDefault();
+      setFeedback({
+        type: "error",
+        title: "Address limit reached",
+        message:
+          "You can save up to 5 addresses. Delete an existing address to add another.",
+      });
+      return;
+    }
+
     if (mutationInFlightReference.current) {
       event.preventDefault();
       return;
@@ -811,6 +834,8 @@ export default function AddressBook() {
     editingAddressId === null &&
     addresses.length === 0;
   const interfaceIsBusy = operation !== null;
+  const addressLimitHasBeenReached =
+    addresses.length >= maximumSavedAddresses;
   const addressChangesAreDisabled =
     interfaceIsBusy || feedback?.type === "warning";
   const storedEditorState = editingAddressId
@@ -853,7 +878,13 @@ export default function AddressBook() {
           size="lg"
           disabled={
             addressChangesAreDisabled ||
-            loadStatus !== "loaded"
+            loadStatus !== "loaded" ||
+            addressLimitHasBeenReached
+          }
+          aria-describedby={
+            addressLimitHasBeenReached
+              ? "address-limit-message"
+              : undefined
           }
           className="w-full sm:w-auto"
           onClick={(event) => {
@@ -867,6 +898,17 @@ export default function AddressBook() {
           Add Address
         </Button>
       </div>
+
+      {loadStatus === "loaded" &&
+        addressLimitHasBeenReached && (
+          <p
+            id="address-limit-message"
+            role="status"
+            className="mt-3 text-sm leading-6 text-muted-foreground"
+          >
+            You can save up to 5 addresses. Delete an existing address to add another.
+          </p>
+        )}
 
       {feedback && (
         <div
@@ -1171,7 +1213,13 @@ export default function AddressBook() {
                 <Button
                   type="submit"
                   size="lg"
-                  disabled={!isDirty || interfaceIsBusy || isSubmitting}
+                  disabled={
+                    !isDirty ||
+                    interfaceIsBusy ||
+                    isSubmitting ||
+                    (editingAddressId === null &&
+                      addressLimitHasBeenReached)
+                  }
                 >
                   {operation === "saving" || isSubmitting ? (
                     <LoaderCircle aria-hidden="true" className="size-4 animate-spin motion-reduce:animate-none" />

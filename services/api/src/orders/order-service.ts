@@ -259,7 +259,10 @@ function toOrderSummary(
           id: item.id,
 
           productId:
-            item.productId,
+            item.product?.status ===
+            ProductStatus.ACTIVE
+              ? item.productId
+              : null,
 
           productName:
             item.productName,
