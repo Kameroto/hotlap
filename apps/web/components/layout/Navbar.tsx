@@ -47,10 +47,6 @@ const navigationLinks = [
     label: "Products",
   },
   {
-    href: "/events",
-    label: "Events",
-  },
-  {
     href: "/about",
     label: "About",
   },

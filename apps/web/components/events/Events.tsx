@@ -50,10 +50,14 @@ const eventFormats: {
 
 export default function Events() {
   return (
-    <Section className="relative overflow-hidden border-b border-white/8 bg-[#080a0c]">
-      <div className="pointer-events-none absolute inset-0">
-        <div className="absolute top-1/2 left-1/2 h-[450px] w-[70%] -translate-x-1/2 -translate-y-1/2 rounded-full bg-primary/[0.035] blur-[150px]" />
-      </div>
+    <div
+      id="events"
+      className="scroll-mt-24"
+    >
+      <Section className="relative overflow-hidden border-b border-white/8 bg-[#080a0c]">
+        <div className="pointer-events-none absolute inset-0">
+          <div className="absolute top-1/2 left-1/2 h-[450px] w-[70%] -translate-x-1/2 -translate-y-1/2 rounded-full bg-primary/[0.035] blur-[150px]" />
+        </div>
 
       <Container>
         <div className="relative">
@@ -146,8 +150,9 @@ export default function Events() {
             />
           </div>
         </div>
-      </Container>
-    </Section>
+        </Container>
+      </Section>
+    </div>
   );
 }
 

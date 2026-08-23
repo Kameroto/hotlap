@@ -38,11 +38,14 @@ export default function CTAButtons({
       >
         Shop RC Cars
 
-        <ArrowRight className="transition-transform duration-300 group-hover:translate-x-1" />
+        <ArrowRight
+          aria-hidden="true"
+          className="transition-transform duration-300 group-hover:translate-x-1"
+        />
       </Link>
 
       <Link
-        href="/events"
+        href="/#events"
         className={cn(
           buttonVariants({
             variant:
@@ -56,7 +59,10 @@ export default function CTAButtons({
       >
         Explore Events
 
-        <CalendarDays className="transition-transform duration-300 group-hover:scale-110" />
+        <CalendarDays
+          aria-hidden="true"
+          className="transition-transform duration-300 group-hover:scale-110"
+        />
       </Link>
     </div>
   );

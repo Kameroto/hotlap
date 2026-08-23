@@ -2,10 +2,10 @@ import Link from "next/link";
 
 import {
   ArrowRight,
-  Headphones,
   Heart,
   MapPin,
-  ShieldCheck,
+  PackageSearch,
+  UserRound,
 } from "lucide-react";
 
 import Container from "./Container";
@@ -43,8 +43,8 @@ const customerLinks = [
     label: "Addresses",
   },
   {
-    href: "/account/preferences",
-    label: "Settings",
+    href: "/contact",
+    label: "Contact & Support",
   },
 ];
 
@@ -53,13 +53,24 @@ const companyLinks = [
     href: "/about",
     label: "About HotLap",
   },
+];
+
+const legalLinks = [
   {
-    href: "/events",
-    label: "RC Events",
+    href: "/privacy",
+    label: "Privacy",
   },
   {
-    href: "/contact",
-    label: "Contact",
+    href: "/terms",
+    label: "Terms",
+  },
+  {
+    href: "/shipping",
+    label: "Shipping",
+  },
+  {
+    href: "/returns",
+    label: "Returns & Refunds",
   },
 ];
 
@@ -70,7 +81,7 @@ export default function Footer() {
   return (
     <footer className="mt-auto border-t border-white/8 bg-[#07090b]">
       <Container>
-        <div className="grid gap-10 py-14 md:grid-cols-2 lg:grid-cols-[1.4fr_0.8fr_0.8fr_0.8fr] lg:gap-12 lg:py-16">
+        <div className="grid gap-10 py-14 sm:grid-cols-2 lg:grid-cols-[1.35fr_repeat(4,0.75fr)] lg:gap-10 lg:py-16">
           <div className="max-w-sm">
             <Link
               href="/"
@@ -100,15 +111,21 @@ export default function Footer() {
               </div>
 
               <div className="flex items-center gap-3">
-                <ShieldCheck className="size-4 shrink-0 text-primary" />
+                <PackageSearch
+                  aria-hidden="true"
+                  className="size-4 shrink-0 text-primary"
+                />
 
-                Genuine products
+                RC-focused catalogue
               </div>
 
               <div className="flex items-center gap-3">
-                <Headphones className="size-4 shrink-0 text-primary" />
+                <UserRound
+                  aria-hidden="true"
+                  className="size-4 shrink-0 text-primary"
+                />
 
-                RC enthusiast support
+                Customer account tools
               </div>
             </div>
           </div>
@@ -121,16 +138,23 @@ export default function Footer() {
           />
 
           <FooterColumn
-            title="Customer"
+            title="Customer Care"
             links={
               customerLinks
             }
           />
 
           <FooterColumn
-            title="HotLap"
+            title="Company"
             links={
               companyLinks
+            }
+          />
+
+          <FooterColumn
+            title="Legal"
+            links={
+              legalLinks
             }
           />
         </div>
