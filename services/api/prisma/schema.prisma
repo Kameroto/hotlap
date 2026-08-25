@@ -19,6 +19,12 @@ enum ProductStatus {
   ARCHIVED
 }
 
+enum EventStatus {
+  DRAFT
+  PUBLISHED
+  CANCELLED
+}
+
 enum OrderStatus {
   PENDING
   CONFIRMED
@@ -200,6 +206,26 @@ model ProductImage {
 
   @@index([productId, sortOrder])
   @@map("product_images")
+}
+
+model Event {
+  id                      String      @id @default(uuid())
+  slug                    String      @unique
+  title                   String
+  description             String
+  location                String
+  startsAt                DateTime
+  endsAt                  DateTime?
+  imageUrl                String?
+  imageAlt                String?
+  externalRegistrationUrl String?
+  status                  EventStatus @default(DRAFT)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([status, startsAt])
+  @@map("events")
 }
 
 model WishlistItem {

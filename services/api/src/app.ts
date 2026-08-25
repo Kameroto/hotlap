@@ -10,6 +10,7 @@ import { authRoutes } from "./routes/auth.js";
 import { cartRoutes } from "./routes/cart.js";
 import { categoryRoutes } from "./routes/categories.js";
 import { databaseRoutes } from "./routes/database.js";
+import { eventRoutes } from "./routes/events.js";
 import { healthRoutes } from "./routes/health.js";
 import { orderRoutes } from "./routes/orders.js";
 import { productRoutes } from "./routes/products.js";
@@ -202,6 +203,9 @@ export async function buildApp() {
       featuredProducts:
         "/api/v1/products/featured",
 
+      events:
+        "/api/v1/events",
+
       cart:
         "/api/v1/cart",
 
@@ -252,6 +256,14 @@ export async function buildApp() {
 
   await app.register(
     productRoutes,
+    {
+      prefix:
+        "/api/v1",
+    },
+  );
+
+  await app.register(
+    eventRoutes,
     {
       prefix:
         "/api/v1",
