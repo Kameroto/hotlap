@@ -14,8 +14,9 @@ export default function ProductReviews({
   ratingAverage,
   reviewCount,
 }: ProductReviewsProps) {
-  const hasAggregateReviews =
-    reviewCount > 0;
+  if (reviewCount <= 0) {
+    return null;
+  }
 
   return (
     <section
@@ -68,9 +69,7 @@ export default function ProductReviews({
               />
 
               <p className="mt-4 text-sm leading-6 text-muted-foreground">
-                {hasAggregateReviews
-                  ? `The catalogue reports an aggregate score from ${reviewCount} ${reviewCount === 1 ? "review" : "reviews"}.`
-                  : "The catalogue does not currently report any reviews for this product."}
+                {`The catalogue reports an aggregate score from ${reviewCount} ${reviewCount === 1 ? "review" : "reviews"}.`}
               </p>
             </div>
           </div>

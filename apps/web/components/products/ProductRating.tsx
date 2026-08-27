@@ -11,6 +11,10 @@ export default function ProductRating({
   rating,
   reviewCount,
 }: ProductRatingProps) {
+  if (reviewCount <= 0) {
+    return null;
+  }
+
   const roundedRating =
     Math.round(
       rating,

@@ -90,9 +90,18 @@ async function seed(): Promise<void> {
     },
 
     update: {
-      stockQuantity: 8,
+      shortDescription:
+        "Development catalogue listing for the MJX Hyper Go 14301 RC vehicle.",
+      description:
+        "Development catalogue listing for the MJX Hyper Go 14301. Exact model specifications, drivetrain, scale and performance information must be verified before production publication.",
+      compareAtPrice: null,
+      stockQuantity: 10,
       isFeatured: true,
       status: ProductStatus.ACTIVE,
+      ratingAverage: "0",
+      reviewCount: 0,
+      badges: [],
+      specifications: {},
     },
 
     create: {
@@ -102,23 +111,17 @@ async function seed(): Promise<void> {
       sku: "HL-MJX-14301",
       brand: "MJX",
       shortDescription:
-        "High-performance brushless RC truck built for speed and durability.",
+        "Development catalogue listing for the MJX Hyper Go 14301 RC vehicle.",
       description:
-        "A powerful brushless RC vehicle designed for high-speed driving, jumps and demanding terrain.",
+        "Development catalogue listing for the MJX Hyper Go 14301. Exact model specifications, drivetrain, scale and performance information must be verified before production publication.",
       price: "12999.00",
-      compareAtPrice: "14999.00",
-      stockQuantity: 8,
+      stockQuantity: 10,
       status: ProductStatus.ACTIVE,
       isFeatured: true,
-      ratingAverage: "4.80",
-      reviewCount: 42,
-      badges: ["new", "featured"],
-      specifications: {
-        scale: "1:14",
-        motor: "Brushless",
-        drivetrain: "4WD",
-        topSpeed: "Approximately 55 km/h",
-      },
+      ratingAverage: "0",
+      reviewCount: 0,
+      badges: [],
+      specifications: {},
 
       images: {
         create: [
@@ -138,9 +141,18 @@ async function seed(): Promise<void> {
     },
 
     update: {
-      stockQuantity: 5,
+      shortDescription:
+        "Development catalogue listing for the WLtoys 124019 RC vehicle.",
+      description:
+        "Development catalogue listing for the WLtoys 124019. Exact scale, chassis, drivetrain and intended-use specifications must be verified before production publication.",
+      compareAtPrice: null,
+      stockQuantity: 10,
       isFeatured: true,
       status: ProductStatus.ACTIVE,
+      ratingAverage: "0",
+      reviewCount: 0,
+      badges: [],
+      specifications: {},
     },
 
     create: {
@@ -150,22 +162,17 @@ async function seed(): Promise<void> {
       sku: "HL-WLT-124019",
       brand: "WLtoys",
       shortDescription:
-        "Metal-chassis 4WD RC buggy for fast off-road driving.",
+        "Development catalogue listing for the WLtoys 124019 RC vehicle.",
       description:
-        "A durable 1:12 scale RC buggy with a metal chassis and capable four-wheel-drive system.",
+        "Development catalogue listing for the WLtoys 124019. Exact scale, chassis, drivetrain and intended-use specifications must be verified before production publication.",
       price: "9999.00",
-      stockQuantity: 5,
+      stockQuantity: 10,
       status: ProductStatus.ACTIVE,
       isFeatured: true,
-      ratingAverage: "4.60",
-      reviewCount: 31,
-      badges: ["featured", "best-seller"],
-      specifications: {
-        scale: "1:12",
-        drivetrain: "4WD",
-        chassis: "Metal",
-        category: "Off-road buggy",
-      },
+      ratingAverage: "0",
+      reviewCount: 0,
+      badges: [],
+      specifications: {},
 
       images: {
         create: [
@@ -185,8 +192,17 @@ async function seed(): Promise<void> {
     },
 
     update: {
-      stockQuantity: 20,
+      shortDescription:
+        "Development catalogue listing for a hardcase RC battery.",
+      description:
+        "Development catalogue listing for an RC battery. Electrical specifications, connector type, dimensions, charging requirements and vehicle compatibility must be verified before production publication.",
+      compareAtPrice: null,
+      stockQuantity: 10,
       status: ProductStatus.ACTIVE,
+      ratingAverage: "0",
+      reviewCount: 0,
+      badges: [],
+      specifications: {},
     },
 
     create: {
@@ -196,20 +212,16 @@ async function seed(): Promise<void> {
       sku: "HL-BAT-5200",
       brand: "HotLap Power",
       shortDescription:
-        "High-capacity hardcase LiPo battery for compatible RC vehicles.",
+        "Development catalogue listing for a hardcase RC battery.",
       description:
-        "A durable hardcase LiPo battery designed to provide consistent power during extended RC sessions.",
+        "Development catalogue listing for an RC battery. Electrical specifications, connector type, dimensions, charging requirements and vehicle compatibility must be verified before production publication.",
       price: "3499.00",
-      stockQuantity: 20,
+      stockQuantity: 10,
       status: ProductStatus.ACTIVE,
-      ratingAverage: "4.40",
-      reviewCount: 18,
+      ratingAverage: "0",
+      reviewCount: 0,
       badges: [],
-      specifications: {
-        capacity: "5200mAh",
-        chemistry: "LiPo",
-        enclosure: "Hardcase",
-      },
+      specifications: {},
 
       images: {
         create: [
@@ -229,9 +241,20 @@ async function seed(): Promise<void> {
     },
 
     update: {
-      stockQuantity: 15,
+      shortDescription:
+        "Adjustable stand for RC car maintenance, storage and display.",
+      description:
+        "Development catalogue listing for an adjustable RC car stand intended for maintenance, storage and display. Exact material, dimensions and vehicle compatibility must be verified before production publication.",
+      compareAtPrice: null,
+      stockQuantity: 10,
       isFeatured: true,
       status: ProductStatus.ACTIVE,
+      ratingAverage: "0",
+      reviewCount: 0,
+      badges: [],
+      specifications: {
+        use: "Maintenance and display",
+      },
     },
 
     create: {
@@ -241,20 +264,18 @@ async function seed(): Promise<void> {
       sku: "HL-3D-STAND-001",
       brand: "HotLap 3D",
       shortDescription:
-        "Adjustable 3D printed maintenance and display stand.",
+        "Adjustable stand for RC car maintenance, storage and display.",
       description:
-        "A lightweight adjustable stand for maintaining, storing and displaying compatible RC cars.",
+        "Development catalogue listing for an adjustable RC car stand intended for maintenance, storage and display. Exact material, dimensions and vehicle compatibility must be verified before production publication.",
       price: "899.00",
-      stockQuantity: 15,
+      stockQuantity: 10,
       status: ProductStatus.ACTIVE,
       isFeatured: true,
-      ratingAverage: "4.70",
-      reviewCount: 22,
-      badges: ["new"],
+      ratingAverage: "0",
+      reviewCount: 0,
+      badges: [],
       specifications: {
-        material: "3D printed polymer",
         use: "Maintenance and display",
-        adjustment: "Height adjustable",
       },
 
       images: {
