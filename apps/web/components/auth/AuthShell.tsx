@@ -64,7 +64,7 @@ export default function AuthShell({
 
             <p className="mt-6 text-lg leading-8 text-neutral-300">
               Save products, manage orders, maintain delivery
-              addresses, and stay updated on upcoming RC events.
+              addresses, and keep your account details together.
             </p>
           </div>
         </div>

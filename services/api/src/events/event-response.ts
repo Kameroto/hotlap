@@ -19,7 +19,27 @@ export type EventResponse = {
 function getSafeExternalRegistrationUrl(
   value: string | null,
 ): string | null {
-  if (!value || value !== value.trim()) {
+  const containsAsciiWhitespaceOrControl =
+    value
+      ? Array.from(value).some(
+          (character) => {
+            const codePoint =
+              character.codePointAt(0) ??
+              0;
+
+            return (
+              codePoint <= 0x20 ||
+              codePoint === 0x7f
+            );
+          },
+        )
+      : false;
+
+  if (
+    !value ||
+    value !== value.trim() ||
+    containsAsciiWhitespaceOrControl
+  ) {
     return null;
   }
 

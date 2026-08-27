@@ -14,7 +14,7 @@ export default function RegisterPage() {
     <AuthShell
       eyebrow="Join HotLap"
       title="Create your account"
-      description="Save products, track purchases, manage addresses, and receive updates about RC events."
+      description="Save products, track purchases, and manage delivery addresses in one place."
     >
       <RegisterForm />
     </AuthShell>
