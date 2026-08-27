@@ -178,7 +178,7 @@ export default function CheckoutOrderSummary({
             <p className="font-semibold text-foreground">
               Cash on Delivery
             </p>
-            <p className="mt-1 text-xs leading-5 text-muted-foreground">
+            <p className="hotlap-supporting-text mt-1 leading-5 text-muted-foreground">
               Cash on Delivery is the currently available payment method for this order.
             </p>
           </div>
@@ -239,7 +239,7 @@ export default function CheckoutOrderSummary({
           : "Place Order"}
       </Button>
 
-      <p className="mt-3 text-center text-xs leading-5 text-muted-foreground">
+      <p className="hotlap-supporting-text mt-3 text-center leading-5 text-muted-foreground">
         Final prices, discounts, shipping, and inventory are verified by HotLap when the order is created.
       </p>
     </aside>

@@ -104,7 +104,7 @@ export default async function ProductDetailsPage({
           <div className="relative py-6 sm:py-8">
             <nav
               aria-label="Breadcrumb"
-              className="flex flex-wrap items-center gap-1.5 text-xs text-muted-foreground"
+              className="hotlap-supporting-text flex flex-wrap items-center gap-1.5 text-muted-foreground"
             >
               <Link
                 href="/"

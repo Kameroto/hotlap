@@ -1013,7 +1013,7 @@ export default function AddressBook() {
                   className={inputClassName}
                   {...register("label")}
                 />
-                <p id={fieldIds.labelHelp} className="mt-2 text-xs leading-5 text-muted-foreground">
+                <p id={fieldIds.labelHelp} className="hotlap-supporting-text mt-2 leading-5 text-muted-foreground">
                   A short name to help you identify this address.
                 </p>
                 <FieldErrorMessage id={fieldIds.labelError} error={errors.label} />
@@ -1049,7 +1049,7 @@ export default function AddressBook() {
                   className={inputClassName}
                   {...register("phone")}
                 />
-                <p id={fieldIds.phoneHelp} className="mt-2 text-xs leading-5 text-muted-foreground">
+                <p id={fieldIds.phoneHelp} className="hotlap-supporting-text mt-2 leading-5 text-muted-foreground">
                   Enter 10 digits beginning with 6–9.
                 </p>
                 <FieldErrorMessage id={fieldIds.phoneError} error={errors.phone} />
@@ -1068,7 +1068,7 @@ export default function AddressBook() {
                   className={inputClassName}
                   {...register("postalCode")}
                 />
-                <p id={fieldIds.postalHelp} className="mt-2 text-xs leading-5 text-muted-foreground">
+                <p id={fieldIds.postalHelp} className="hotlap-supporting-text mt-2 leading-5 text-muted-foreground">
                   Enter a 6-digit Indian PIN code.
                 </p>
                 <FieldErrorMessage id={fieldIds.postalError} error={errors.postalCode} />
@@ -1102,7 +1102,7 @@ export default function AddressBook() {
                   className={inputClassName}
                   {...register("addressLine2")}
                 />
-                <p id={fieldIds.line2Help} className="mt-2 text-xs leading-5 text-muted-foreground">
+                <p id={fieldIds.line2Help} className="hotlap-supporting-text mt-2 leading-5 text-muted-foreground">
                   Blank values are saved as no second address line.
                 </p>
                 <FieldErrorMessage id={fieldIds.line2Error} error={errors.addressLine2} />

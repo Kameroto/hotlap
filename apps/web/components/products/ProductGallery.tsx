@@ -454,7 +454,7 @@ export default function ProductGallery({
             </p>
 
             <div className="flex items-center gap-3">
-              <span className="text-xs text-muted-foreground">
+              <span className="hotlap-supporting-text text-muted-foreground">
                 {selectedIndex + 1} / {galleryImages.length}
               </span>
 

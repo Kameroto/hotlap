@@ -56,7 +56,7 @@ export default function Newsletter() {
                 directly in your inbox.
               </p>
 
-              <div className="mt-7 inline-flex items-center gap-2 text-xs font-semibold text-muted-foreground">
+              <div className="hotlap-supporting-text mt-7 inline-flex items-center gap-2 font-semibold text-muted-foreground">
                 <Mail className="size-4 text-primary" />
 
                 Newsletter subscriptions

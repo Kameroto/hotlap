@@ -90,7 +90,7 @@ export default function Footer() {
             <Link
               href="/"
               aria-label="HotLap home"
-              className="inline-flex items-center text-2xl font-black italic tracking-[-0.07em]"
+              className="inline-flex items-center font-heading text-2xl font-bold italic tracking-[-0.07em]"
             >
               HOTL
               <span className="text-primary">
@@ -164,7 +164,7 @@ export default function Footer() {
         </div>
 
         <div className="border-t border-white/8 py-7">
-          <div className="flex flex-col gap-5 text-xs text-muted-foreground sm:flex-row sm:items-center sm:justify-between">
+          <div className="hotlap-supporting-text flex flex-col gap-5 text-muted-foreground sm:flex-row sm:items-center sm:justify-between">
             <p>
               © {currentYear} HotLap.
               All rights reserved.
@@ -197,7 +197,7 @@ function FooterColumn({
 }: FooterColumnProps) {
   return (
     <div>
-      <h2 className="text-xs font-bold uppercase tracking-[0.18em] text-foreground">
+      <h2 className="hotlap-supporting-text font-bold uppercase tracking-[0.18em] text-foreground">
         {title}
       </h2>
 

@@ -82,7 +82,7 @@ export default function EventImage({
               />
             </span>
 
-            <p className="mt-4 text-xs font-bold uppercase tracking-[0.16em] text-muted-foreground">
+            <p className="hotlap-supporting-text mt-4 font-bold uppercase tracking-[0.16em] text-muted-foreground">
               HotLap Event
             </p>
 

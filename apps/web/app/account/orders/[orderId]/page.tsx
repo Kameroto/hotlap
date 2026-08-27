@@ -450,7 +450,7 @@ export default function OrderDetailsPage() {
 
               {order.coupon && (
                 <div className="rounded-xl border border-[var(--hotlap-success)]/25 bg-[var(--hotlap-success)]/8 px-3 py-3">
-                  <dt className="text-xs font-bold uppercase tracking-[0.12em] text-[var(--hotlap-success)]">
+                  <dt className="hotlap-supporting-text font-bold uppercase tracking-[0.12em] text-[var(--hotlap-success)]">
                     Coupon applied
                   </dt>
                   <dd className="mt-1 break-words font-semibold text-foreground">
@@ -559,7 +559,7 @@ function OrderProductLine({
         ) : (
           <div>
             {productContent}
-            <p className="mt-2 text-xs text-muted-foreground">
+            <p className="hotlap-supporting-text mt-2 text-muted-foreground">
               This historical product is no
               longer in the catalogue.
             </p>

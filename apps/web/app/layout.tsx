@@ -3,8 +3,9 @@ import type {
 } from "next";
 
 import {
-  Geist,
   Geist_Mono,
+  Rubik,
+  Tomorrow,
 } from "next/font/google";
 
 import {
@@ -13,14 +14,38 @@ import {
 
 import "./globals.css";
 
+import AnnouncementBar from "@/components/layout/AnnouncementBar";
 import Footer from "@/components/layout/Footer";
 import Navbar from "@/components/layout/Navbar";
 import StoreHydration from "@/components/providers/StoreHydration";
 
-const geistSans =
-  Geist({
+const rubik =
+  Rubik({
     variable:
-      "--font-geist-sans",
+      "--font-rubik",
+
+    weight: [
+      "400",
+      "600",
+    ],
+
+    subsets: [
+      "latin",
+    ],
+  });
+
+const tomorrow =
+  Tomorrow({
+    variable:
+      "--font-tomorrow",
+
+    weight:
+      "700",
+
+    style: [
+      "normal",
+      "italic",
+    ],
 
     subsets: [
       "latin",
@@ -74,10 +99,12 @@ export default function RootLayout({
       className="dark"
     >
       <body
-        className={`${geistSans.variable} ${geistMono.variable} min-h-screen antialiased`}
+        className={`${rubik.variable} ${tomorrow.variable} ${geistMono.variable} min-h-screen antialiased`}
       >
         <StoreHydration>
           <div className="flex min-h-screen flex-col">
+            <AnnouncementBar />
+
             <Navbar />
 
             <div className="flex-1">

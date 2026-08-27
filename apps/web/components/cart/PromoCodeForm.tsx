@@ -325,7 +325,7 @@ export default function PromoCodeForm({
         </Button>
       </div>
 
-      <p className="mt-2 text-xs leading-5 text-muted-foreground">
+      <p className="hotlap-supporting-text mt-2 leading-5 text-muted-foreground">
         Eligibility and discount amounts are verified by the HotLap server.
       </p>
     </form>

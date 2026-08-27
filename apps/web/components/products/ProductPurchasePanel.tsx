@@ -60,7 +60,7 @@ export default function ProductPurchasePanel({
     <div className="lg:sticky lg:top-28">
       <div className="rounded-2xl border border-white/10 bg-[#101316] p-5 shadow-[0_24px_70px_rgba(0,0,0,0.3)] sm:p-7">
         <div className="flex flex-wrap items-center gap-2">
-          <span className="text-xs font-bold uppercase tracking-[0.16em] text-primary">
+          <span className="hotlap-supporting-text font-bold uppercase tracking-[0.16em] text-primary">
             {product.brand}
           </span>
 
@@ -68,7 +68,7 @@ export default function ProductPurchasePanel({
             /
           </span>
 
-          <span className="text-xs font-semibold uppercase tracking-[0.12em] text-muted-foreground">
+          <span className="hotlap-supporting-text font-semibold uppercase tracking-[0.12em] text-muted-foreground">
             {product.category.name}
           </span>
         </div>
@@ -121,7 +121,7 @@ export default function ProductPurchasePanel({
         </div>
 
         <div className="mt-2 flex items-center justify-between gap-3">
-          <p className="text-xs text-muted-foreground">
+          <p className="hotlap-supporting-text text-muted-foreground">
             SKU:{" "}
             <span className="font-mono text-foreground/80">
               {product.sku}
@@ -277,7 +277,7 @@ export default function ProductPurchasePanel({
         <div className="mt-6 text-center">
           <Link
             href="/cart"
-            className="text-xs font-semibold text-muted-foreground transition-colors hover:text-primary"
+            className="hotlap-supporting-text font-semibold text-muted-foreground transition-colors hover:text-primary"
           >
             Review your cart before
             checkout
@@ -306,7 +306,7 @@ function PurchaseBenefit({
       </div>
 
       <div className="sm:mt-3">
-        <p className="text-xs font-semibold text-foreground">
+        <p className="hotlap-supporting-text font-semibold text-foreground">
           {title}
         </p>
 

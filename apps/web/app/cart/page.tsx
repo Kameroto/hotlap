@@ -573,7 +573,7 @@ function CartItemCard({
       <div className="flex min-w-0 flex-col">
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0">
-            <p className="text-xs font-semibold uppercase tracking-[0.16em] text-primary">
+            <p className="hotlap-supporting-text font-semibold uppercase tracking-[0.16em] text-primary">
               {product.brand}
             </p>
 
@@ -646,7 +646,7 @@ function CartItemCard({
 
         <div className="mt-5 flex flex-wrap items-end justify-between gap-4 sm:mt-auto sm:pt-5">
           <div>
-            <div className="mb-2 flex items-center gap-2 text-xs font-medium uppercase tracking-[0.12em] text-muted-foreground">
+            <div className="hotlap-supporting-text mb-2 flex items-center gap-2 font-medium uppercase tracking-[0.12em] text-muted-foreground">
               <span>Quantity</span>
               {isPending && (
                 <span
@@ -703,7 +703,7 @@ function CartItemCard({
           </div>
 
           <div className="text-right">
-            <p className="text-xs font-medium uppercase tracking-[0.12em] text-muted-foreground">
+            <p className="hotlap-supporting-text font-medium uppercase tracking-[0.12em] text-muted-foreground">
               Line total
             </p>
             <p className="mt-2 text-lg font-bold text-foreground">

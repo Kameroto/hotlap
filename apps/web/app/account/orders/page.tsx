@@ -192,7 +192,7 @@ export default function OrdersPage() {
               >
                 <div className="flex min-w-0 flex-col gap-5 sm:flex-row sm:items-start sm:justify-between">
                   <div className="min-w-0">
-                    <p className="text-xs font-bold uppercase tracking-[0.14em] text-muted-foreground">
+                    <p className="hotlap-supporting-text font-bold uppercase tracking-[0.14em] text-muted-foreground">
                       Order reference
                     </p>
 
@@ -221,7 +221,7 @@ export default function OrdersPage() {
 
                 <dl className="mt-6 grid gap-5 border-t border-border pt-6 sm:grid-cols-3">
                   <div>
-                    <dt className="text-xs font-bold uppercase tracking-[0.12em] text-muted-foreground">
+                    <dt className="hotlap-supporting-text font-bold uppercase tracking-[0.12em] text-muted-foreground">
                       Items
                     </dt>
                     <dd className="mt-1 font-semibold text-foreground">
@@ -230,7 +230,7 @@ export default function OrdersPage() {
                   </div>
 
                   <div>
-                    <dt className="text-xs font-bold uppercase tracking-[0.12em] text-muted-foreground">
+                    <dt className="hotlap-supporting-text font-bold uppercase tracking-[0.12em] text-muted-foreground">
                       Payment
                     </dt>
                     <dd className="mt-1 break-words font-semibold text-foreground">
@@ -241,7 +241,7 @@ export default function OrdersPage() {
                   </div>
 
                   <div>
-                    <dt className="text-xs font-bold uppercase tracking-[0.12em] text-muted-foreground">
+                    <dt className="hotlap-supporting-text font-bold uppercase tracking-[0.12em] text-muted-foreground">
                       Total
                     </dt>
                     <dd className="mt-1 font-black text-foreground">

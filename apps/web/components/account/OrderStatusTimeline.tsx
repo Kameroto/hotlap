@@ -106,7 +106,7 @@ export default function OrderStatusTimeline({
               </p>
 
               {step.completedAt && (
-                <p className="mt-2 text-xs font-medium text-[var(--hotlap-success)]">
+                <p className="hotlap-supporting-text mt-2 font-medium text-[var(--hotlap-success)]">
                   {formatTimelineDate(
                     step.completedAt,
                   )}

@@ -106,7 +106,7 @@ export default function WhyHotLap() {
           </div>
 
           <div className="mt-7 flex justify-center">
-            <p className="max-w-2xl text-center text-xs font-semibold uppercase tracking-[0.15em] text-muted-foreground">
+            <p className="hotlap-supporting-text max-w-2xl text-center font-semibold uppercase tracking-[0.15em] text-muted-foreground">
               Performance ·
               Repairability ·
               Upgradeability ·

@@ -1010,7 +1010,7 @@ export default function CheckoutForm({
                   />
                   <p
                     id="checkout-email-description"
-                    className="mt-2 text-xs leading-5 text-muted-foreground"
+                    className="hotlap-supporting-text mt-2 leading-5 text-muted-foreground"
                   >
                     Checkout uses this authenticated account email for the order.
                   </p>
@@ -1116,7 +1116,7 @@ export default function CheckoutForm({
                   className="text-xl font-bold tracking-tight text-foreground"
                 >
                   Order Notes
-                  <span className="ml-2 text-xs font-normal text-muted-foreground">
+                  <span className="hotlap-supporting-text ml-2 font-normal text-muted-foreground">
                     Optional
                   </span>
                 </label>

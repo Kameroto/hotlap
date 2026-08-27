@@ -399,7 +399,7 @@ export default function ProfileForm() {
 
             <p
               id={emailHelpId}
-              className="mt-2 text-xs leading-5 text-muted-foreground"
+              className="hotlap-supporting-text mt-2 leading-5 text-muted-foreground"
             >
               Your sign-in email is read-only and is never included in profile updates.
             </p>
@@ -436,7 +436,7 @@ export default function ProfileForm() {
 
             <p
               id={phoneHelpId}
-              className="mt-2 text-xs leading-5 text-muted-foreground"
+              className="hotlap-supporting-text mt-2 leading-5 text-muted-foreground"
             >
               Leave blank to remove it. Indian mobile numbers must be 10 digits and start with 6–9.
             </p>

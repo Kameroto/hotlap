@@ -148,7 +148,7 @@ export default async function EventDetailsPage({
                     className="mt-0.5 size-5 shrink-0 text-primary"
                   />
                   <div>
-                    <dt className="text-xs font-bold uppercase tracking-[0.12em] text-muted-foreground">
+                    <dt className="hotlap-supporting-text font-bold uppercase tracking-[0.12em] text-muted-foreground">
                       Date and time
                     </dt>
                     <dd className="mt-1 break-words text-sm leading-7 text-foreground sm:text-base">
@@ -166,7 +166,7 @@ export default async function EventDetailsPage({
                     className="mt-0.5 size-5 shrink-0 text-primary"
                   />
                   <div className="min-w-0">
-                    <dt className="text-xs font-bold uppercase tracking-[0.12em] text-muted-foreground">
+                    <dt className="hotlap-supporting-text font-bold uppercase tracking-[0.12em] text-muted-foreground">
                       Location
                     </dt>
                     <dd className="mt-1 break-words text-sm leading-7 text-foreground sm:text-base">

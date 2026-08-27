@@ -56,7 +56,7 @@ export default function Hero() {
       </div>
 
       <Container>
-        <div className="relative grid min-h-[calc(100vh-72px)] items-center gap-14 py-14 lg:grid-cols-[0.95fr_1.05fr] lg:gap-12 lg:py-20 xl:gap-16">
+        <div className="relative grid min-h-[calc(100vh_-_var(--hotlap-announcement-height)_-_var(--hotlap-navbar-height))] min-h-[calc(100svh_-_var(--hotlap-announcement-height)_-_var(--hotlap-navbar-height))] items-center gap-14 py-14 lg:grid-cols-[0.95fr_1.05fr] lg:gap-12 lg:py-20 xl:gap-16">
           <HeroContent />
 
           <HeroImage />
@@ -87,7 +87,7 @@ export default function Hero() {
                       {title}
                     </p>
 
-                    <p className="mt-1 text-xs leading-5 text-muted-foreground">
+                    <p className="hotlap-supporting-text mt-1 leading-5 text-muted-foreground">
                       {
                         description
                       }

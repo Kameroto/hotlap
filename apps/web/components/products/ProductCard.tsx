@@ -333,7 +333,7 @@ export default function ProductCard({
 
       <div className="flex flex-1 flex-col p-5 sm:p-6">
         <div className="flex items-center justify-between gap-3">
-          <div className="inline-flex items-center gap-2 text-xs font-bold uppercase tracking-[0.13em] text-primary">
+          <div className="hotlap-supporting-text inline-flex items-center gap-2 font-bold uppercase tracking-[0.13em] text-primary">
             <CarFront className="size-3.5" />
 
             {
@@ -350,7 +350,7 @@ export default function ProductCard({
           )}
         </div>
 
-        <p className="mt-4 text-xs font-bold uppercase tracking-[0.14em] text-muted-foreground">
+        <p className="hotlap-supporting-text mt-4 font-bold uppercase tracking-[0.14em] text-muted-foreground">
           {product.brand}
         </p>
 
@@ -408,14 +408,14 @@ export default function ProductCard({
                     <div className="flex min-w-0 items-center gap-2.5">
                       <Icon className="size-3.5 shrink-0 text-primary" />
 
-                      <span className="text-xs font-medium text-muted-foreground">
+                      <span className="hotlap-supporting-text font-medium text-muted-foreground">
                         {
                           specification.label
                         }
                       </span>
                     </div>
 
-                    <span className="max-w-40 truncate text-right text-xs font-semibold text-foreground sm:text-sm">
+                    <span className="max-w-40 truncate text-right text-[0.8125rem] font-semibold text-foreground sm:text-sm">
                       {
                         specification.value
                       }

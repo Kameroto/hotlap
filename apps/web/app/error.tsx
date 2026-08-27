@@ -45,7 +45,7 @@ export default function ErrorPage({
         </p>
 
         {error.digest && (
-          <p className="mt-4 text-xs text-muted-foreground">
+          <p className="hotlap-supporting-text mt-4 text-muted-foreground">
             Error reference: {error.digest}
           </p>
         )}

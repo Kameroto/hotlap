@@ -132,7 +132,7 @@ export default function Navbar() {
     <header className="sticky top-0 z-50 border-b border-white/8 bg-[#080a0c]/92 shadow-[0_10px_40px_rgba(0,0,0,0.22)] backdrop-blur-xl">
       <Container>
         <nav
-          className="flex h-[72px] items-center gap-6"
+          className="flex h-[var(--hotlap-navbar-height)] items-center gap-6"
           aria-label="Primary navigation"
         >
           <Link
@@ -143,7 +143,7 @@ export default function Navbar() {
             aria-label="HotLap home"
             className="group shrink-0"
           >
-            <span className="flex items-center text-[1.55rem] font-black italic tracking-[-0.07em] text-foreground sm:text-[1.7rem]">
+            <span className="flex items-center font-heading text-[1.55rem] font-bold italic tracking-[-0.07em] text-foreground sm:text-[1.7rem]">
               HOTL
               <span className="relative text-primary">
                 A

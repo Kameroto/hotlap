@@ -272,7 +272,7 @@ export default function RegisterForm() {
           error={errors.password}
         />
 
-        <p className="mt-2 text-xs leading-5 text-muted-foreground">
+        <p className="hotlap-supporting-text mt-2 leading-5 text-muted-foreground">
           Use at least 8 characters with uppercase,
           lowercase, and a number.
         </p>

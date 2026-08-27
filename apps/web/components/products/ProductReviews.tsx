@@ -117,7 +117,7 @@ function ReviewDataNotice({
           {title}
         </h3>
 
-        <p className="mt-1.5 text-xs leading-5 text-muted-foreground">
+        <p className="hotlap-supporting-text mt-1.5 leading-5 text-muted-foreground">
           {text}
         </p>
       </div>

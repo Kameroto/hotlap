@@ -45,7 +45,7 @@ export default function ProductsError({
 
             {process.env.NODE_ENV ===
               "development" && (
-              <p className="mt-4 break-words rounded-lg border border-white/8 bg-black/25 p-3 text-left font-mono text-xs text-muted-foreground">
+              <p className="hotlap-supporting-text mt-4 break-words rounded-lg border border-white/8 bg-black/25 p-3 text-left font-mono text-muted-foreground">
                 {error.message}
               </p>
             )}
