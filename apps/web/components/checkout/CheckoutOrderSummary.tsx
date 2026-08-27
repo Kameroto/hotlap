@@ -92,6 +92,7 @@ export default function CheckoutOrderSummary({
                     primaryImage?.alt ??
                     product.name
                   }
+                  variant="thumbnail"
                 />
               </Link>
 

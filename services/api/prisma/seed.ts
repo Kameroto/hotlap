@@ -123,8 +123,8 @@ async function seed(): Promise<void> {
       images: {
         create: [
           {
-            url: "/products/mjx-hyper-go-14301.jpg",
-            alt: "MJX Hyper Go 14301 RC car",
+            url: "/products/mjx-hyper-go-14301-01-primary.webp",
+            alt: "Generic development image for MJX Hyper Go 14301",
             isPrimary: true,
           },
         ],
@@ -170,8 +170,8 @@ async function seed(): Promise<void> {
       images: {
         create: [
           {
-            url: "/products/wltoys-124019.jpg",
-            alt: "WLtoys 124019 RC buggy",
+            url: "/products/wltoys-124019-01-primary.webp",
+            alt: "Generic development image for WLtoys 124019",
             isPrimary: true,
           },
         ],
@@ -214,8 +214,8 @@ async function seed(): Promise<void> {
       images: {
         create: [
           {
-            url: "/products/lipo-battery-5200mah.jpg",
-            alt: "Hardcase LiPo battery",
+            url: "/products/hardcase-lipo-battery-5200mah-01-primary.webp",
+            alt: "Generic development image for Hardcase LiPo Battery 5200mAh",
             isPrimary: true,
           },
         ],
@@ -260,8 +260,8 @@ async function seed(): Promise<void> {
       images: {
         create: [
           {
-            url: "/products/adjustable-rc-car-stand.jpg",
-            alt: "Adjustable RC car stand",
+            url: "/products/adjustable-rc-car-stand-01-primary.webp",
+            alt: "Generic development image for Adjustable RC Car Stand",
             isPrimary: true,
           },
         ],
