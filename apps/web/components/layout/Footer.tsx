@@ -53,6 +53,10 @@ const companyLinks = [
     href: "/about",
     label: "About HotLap",
   },
+  {
+    href: "/events",
+    label: "Events",
+  },
 ];
 
 const legalLinks = [

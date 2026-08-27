@@ -45,7 +45,7 @@ export default function CTAButtons({
       </Link>
 
       <Link
-        href="/#events"
+        href="/events"
         className={cn(
           buttonVariants({
             variant:
