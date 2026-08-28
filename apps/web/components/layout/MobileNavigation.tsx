@@ -42,6 +42,7 @@ type MobileNavigationProps = {
   categories: Category[];
   cartQuantity: number;
   wishlistCount: number;
+  onSearchOpen: () => void;
 };
 
 const mainLinks = [
@@ -75,6 +76,7 @@ export default function MobileNavigation({
   categories,
   cartQuantity,
   wishlistCount,
+  onSearchOpen,
 }: MobileNavigationProps) {
   return (
     <SiteOverlay
@@ -113,33 +115,18 @@ export default function MobileNavigation({
         </div>
 
         <div className="flex-1 px-5 py-5">
-          <form
-            action="/products"
-            method="get"
-            onSubmit={onClose}
+          <button
+            type="button"
+            onClick={onSearchOpen}
+            aria-label="Search HotLap products"
+            className="flex h-12 w-full items-center gap-3 rounded-xl border border-white/10 bg-white/[0.035] px-4 text-left text-sm font-medium text-muted-foreground outline-none transition-colors hover:border-white/20 hover:text-foreground focus-visible:border-primary/70 focus-visible:ring-2 focus-visible:ring-primary/25 motion-reduce:transition-none"
           >
-            <div className="relative">
-              <Search
-                aria-hidden="true"
-                className="absolute top-1/2 left-4 size-4 -translate-y-1/2 text-muted-foreground"
-              />
-
-              <label
-                htmlFor="mobile-product-search"
-                className="sr-only"
-              >
-                Search HotLap products
-              </label>
-
-              <input
-                id="mobile-product-search"
-                name="search"
-                type="search"
-                placeholder="Search products..."
-                className="h-12 w-full rounded-xl border border-white/10 bg-white/[0.035] pr-4 pl-11 text-sm font-medium text-foreground outline-none transition-colors placeholder:text-muted-foreground/75 focus-visible:border-primary/70 focus-visible:ring-2 focus-visible:ring-primary/25 motion-reduce:transition-none"
-              />
-            </div>
-          </form>
+            <Search
+              aria-hidden="true"
+              className="size-4 shrink-0"
+            />
+            Search products...
+          </button>
 
           <nav
             className="mt-6"

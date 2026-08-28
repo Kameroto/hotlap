@@ -18,6 +18,7 @@ type SiteOverlayProps = {
   triggerRef: RefObject<HTMLElement | null>;
   labelledBy: string;
   children: ReactNode;
+  containerClassName?: string;
   panelClassName?: string;
 };
 
@@ -28,6 +29,7 @@ export default function SiteOverlay({
   triggerRef,
   labelledBy,
   children,
+  containerClassName,
   panelClassName,
 }: SiteOverlayProps) {
   const dialogRef =
@@ -94,7 +96,10 @@ export default function SiteOverlay({
       className="fixed inset-0 m-0 h-dvh max-h-none w-screen max-w-none overflow-hidden border-0 bg-transparent p-0 text-foreground backdrop:bg-black/75 backdrop:backdrop-blur-sm"
     >
       <div
-        className="flex h-full justify-end"
+        className={cn(
+          "flex h-full justify-end",
+          containerClassName,
+        )}
         onClick={(event) => {
           if (
             event.target ===

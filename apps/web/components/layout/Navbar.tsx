@@ -24,6 +24,7 @@ import {
 import Container from "@/components/layout/Container";
 import DesktopProductsMenu from "@/components/layout/DesktopProductsMenu";
 import MobileNavigation from "@/components/layout/MobileNavigation";
+import SearchOverlay from "@/components/layout/SearchOverlay";
 
 import {
   buttonVariants,
@@ -88,10 +89,18 @@ export default function Navbar({
     setProductsMenuIsOpen,
   ] = useState(false);
 
+  const [
+    searchIsOpen,
+    setSearchIsOpen,
+  ] = useState(false);
+
   const mobileMenuTriggerRef =
     useRef<HTMLButtonElement>(null);
 
   const productsMenuTriggerRef =
+    useRef<HTMLButtonElement>(null);
+
+  const searchTriggerRef =
     useRef<HTMLButtonElement>(null);
 
   const wishlistItems =
@@ -164,6 +173,11 @@ export default function Navbar({
       [],
     );
 
+  const closeSearch =
+    useCallback(() => {
+      setSearchIsOpen(false);
+    }, []);
+
   useEffect(() => {
     const frame =
       requestAnimationFrame(() => {
@@ -171,6 +185,7 @@ export default function Navbar({
         setProductsMenuIsOpen(
           false,
         );
+        closeSearch();
       });
 
     return () => {
@@ -180,6 +195,7 @@ export default function Navbar({
     };
   }, [
     closeMobileMenu,
+    closeSearch,
     pathname,
   ]);
 
@@ -307,33 +323,28 @@ export default function Navbar({
             )}
           </div>
 
-          <form
-            action="/products"
-            method="get"
-            className="ml-auto hidden min-w-0 flex-1 justify-end xl:flex"
+          <button
+            ref={searchTriggerRef}
+            type="button"
+            onClick={() => {
+              setProductsMenuIsOpen(
+                false,
+              );
+              setSearchIsOpen(true);
+            }}
+            aria-label="Open product search"
+            aria-expanded={
+              searchIsOpen
+            }
+            aria-controls="site-search"
+            className="group ml-auto hidden h-10 min-w-0 max-w-[370px] flex-1 items-center gap-3 rounded-lg border border-white/10 bg-white/[0.035] px-4 text-left text-sm text-muted-foreground outline-none transition-all duration-300 hover:border-white/18 hover:bg-white/[0.05] hover:text-foreground focus-visible:border-primary/70 focus-visible:ring-2 focus-visible:ring-primary/25 xl:flex"
           >
-            <div className="relative w-full max-w-[370px]">
-              <Search
-                aria-hidden="true"
-                className="absolute top-1/2 left-4 size-4 -translate-y-1/2 text-muted-foreground"
-              />
-
-              <label
-                htmlFor="navbar-product-search"
-                className="sr-only"
-              >
-                Search HotLap products
-              </label>
-
-              <input
-                id="navbar-product-search"
-                name="search"
-                type="search"
-                placeholder="Search RC cars, parts & more..."
-                className="h-10 w-full rounded-lg border border-white/10 bg-white/[0.035] pr-4 pl-11 text-sm text-foreground outline-none transition-all duration-300 placeholder:text-muted-foreground/70 hover:border-white/18 focus:border-primary/70 focus:bg-white/[0.05] focus:ring-2 focus:ring-primary/15"
-              />
-            </div>
-          </form>
+            <Search
+              aria-hidden="true"
+              className="size-4 shrink-0"
+            />
+            Search RC cars, parts &amp; more...
+          </button>
 
           <div
             className={cn(
@@ -342,6 +353,32 @@ export default function Navbar({
               "lg:ml-auto xl:ml-2",
             )}
           >
+            <button
+              type="button"
+              onClick={(event) => {
+                searchTriggerRef.current =
+                  event.currentTarget;
+                setProductsMenuIsOpen(
+                  false,
+                );
+                setSearchIsOpen(true);
+              }}
+              aria-label="Open product search"
+              aria-expanded={
+                searchIsOpen
+              }
+              aria-controls="site-search"
+              className={cn(
+                buttonVariants({
+                  variant: "ghost",
+                  size: "icon",
+                }),
+                "border-white/0 text-muted-foreground hover:text-foreground xl:hidden",
+              )}
+            >
+              <Search className="size-[1.15rem]" />
+            </button>
+
             <Link
               href="/account"
               aria-label="Customer account"
@@ -468,6 +505,21 @@ export default function Navbar({
         wishlistCount={
           visibleWishlistCount
         }
+        onSearchOpen={() => {
+          searchTriggerRef.current =
+            mobileMenuTriggerRef.current;
+          closeMobileMenu();
+
+          requestAnimationFrame(() => {
+            setSearchIsOpen(true);
+          });
+        }}
+      />
+
+      <SearchOverlay
+        open={searchIsOpen}
+        onClose={closeSearch}
+        triggerRef={searchTriggerRef}
       />
     </header>
   );
