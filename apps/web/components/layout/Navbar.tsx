@@ -22,6 +22,7 @@ import {
 } from "lucide-react";
 
 import Container from "@/components/layout/Container";
+import CartDrawer from "@/components/layout/CartDrawer";
 import DesktopProductsMenu from "@/components/layout/DesktopProductsMenu";
 import MobileNavigation from "@/components/layout/MobileNavigation";
 import SearchOverlay from "@/components/layout/SearchOverlay";
@@ -94,6 +95,11 @@ export default function Navbar({
     setSearchIsOpen,
   ] = useState(false);
 
+  const [
+    cartDrawerIsOpen,
+    setCartDrawerIsOpen,
+  ] = useState(false);
+
   const mobileMenuTriggerRef =
     useRef<HTMLButtonElement>(null);
 
@@ -101,6 +107,9 @@ export default function Navbar({
     useRef<HTMLButtonElement>(null);
 
   const searchTriggerRef =
+    useRef<HTMLButtonElement>(null);
+
+  const cartTriggerRef =
     useRef<HTMLButtonElement>(null);
 
   const wishlistItems =
@@ -178,6 +187,13 @@ export default function Navbar({
       setSearchIsOpen(false);
     }, []);
 
+  const closeCartDrawer =
+    useCallback(() => {
+      setCartDrawerIsOpen(
+        false,
+      );
+    }, []);
+
   useEffect(() => {
     const frame =
       requestAnimationFrame(() => {
@@ -186,6 +202,7 @@ export default function Navbar({
           false,
         );
         closeSearch();
+        closeCartDrawer();
       });
 
     return () => {
@@ -196,6 +213,7 @@ export default function Navbar({
   }, [
     closeMobileMenu,
     closeSearch,
+    closeCartDrawer,
     pathname,
   ]);
 
@@ -326,10 +344,13 @@ export default function Navbar({
           <button
             ref={searchTriggerRef}
             type="button"
-            onClick={() => {
+            onClick={(event) => {
+              searchTriggerRef.current =
+                event.currentTarget;
               setProductsMenuIsOpen(
                 false,
               );
+              closeCartDrawer();
               setSearchIsOpen(true);
             }}
             aria-label="Open product search"
@@ -361,6 +382,7 @@ export default function Navbar({
                 setProductsMenuIsOpen(
                   false,
                 );
+                closeCartDrawer();
                 setSearchIsOpen(true);
               }}
               aria-label="Open product search"
@@ -422,9 +444,26 @@ export default function Navbar({
                 )}
             </Link>
 
-            <Link
-              href="/cart"
+            <button
+              ref={cartTriggerRef}
+              type="button"
               aria-label={`Cart with ${visibleCartQuantity} items`}
+              aria-expanded={
+                cartDrawerIsOpen
+              }
+              aria-controls="cart-drawer"
+              onClick={(event) => {
+                cartTriggerRef.current =
+                  event.currentTarget;
+                closeSearch();
+                closeMobileMenu();
+                setProductsMenuIsOpen(
+                  false,
+                );
+                setCartDrawerIsOpen(
+                  true,
+                );
+              }}
               className={cn(
                 buttonVariants({
                   variant:
@@ -447,7 +486,7 @@ export default function Navbar({
                       : cartQuantity}
                   </span>
                 )}
-            </Link>
+            </button>
 
             <button
               ref={mobileMenuTriggerRef}
@@ -466,6 +505,8 @@ export default function Navbar({
                   setProductsMenuIsOpen(
                     false,
                   );
+                  closeSearch();
+                  closeCartDrawer();
 
                   setMobileMenuIsOpen(
                     (
@@ -509,9 +550,22 @@ export default function Navbar({
           searchTriggerRef.current =
             mobileMenuTriggerRef.current;
           closeMobileMenu();
+          closeCartDrawer();
 
           requestAnimationFrame(() => {
             setSearchIsOpen(true);
+          });
+        }}
+        onCartOpen={() => {
+          cartTriggerRef.current =
+            mobileMenuTriggerRef.current;
+          closeMobileMenu();
+          closeSearch();
+
+          requestAnimationFrame(() => {
+            setCartDrawerIsOpen(
+              true,
+            );
           });
         }}
       />
@@ -520,6 +574,12 @@ export default function Navbar({
         open={searchIsOpen}
         onClose={closeSearch}
         triggerRef={searchTriggerRef}
+      />
+
+      <CartDrawer
+        open={cartDrawerIsOpen}
+        onClose={closeCartDrawer}
+        triggerRef={cartTriggerRef}
       />
     </header>
   );
