@@ -25,7 +25,7 @@ export default function EventNotFound() {
           />
         </span>
 
-        <p className="mt-8 text-sm font-semibold uppercase tracking-[0.2em] text-primary">
+        <p className="mt-8 text-[0.875rem] font-semibold uppercase tracking-[0.2em] text-primary">
           Event unavailable
         </p>
 

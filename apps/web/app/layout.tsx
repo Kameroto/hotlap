@@ -19,6 +19,10 @@ import Footer from "@/components/layout/Footer";
 import Navbar from "@/components/layout/Navbar";
 import StoreHydration from "@/components/providers/StoreHydration";
 
+import {
+  getCategories,
+} from "@/lib/api/categories";
+
 const rubik =
   Rubik({
     variable:
@@ -26,6 +30,7 @@ const rubik =
 
     weight: [
       "400",
+      "500",
       "600",
     ],
 
@@ -87,25 +92,40 @@ export const metadata: Metadata = {
   ],
 };
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: Readonly<{
   children:
     React.ReactNode;
 }>) {
+  const navigationCategories =
+    await getCategories()
+      .then((response) =>
+        response.categories.filter(
+          (category) =>
+            category.productCount >
+            0,
+        ),
+      )
+      .catch(() => []);
+
   return (
     <html
       lang="en"
       className="dark"
     >
       <body
-        className={`${rubik.variable} ${tomorrow.variable} ${geistMono.variable} min-h-screen antialiased`}
+        className={`${rubik.variable} ${tomorrow.variable} ${geistMono.variable} min-h-screen`}
       >
         <StoreHydration>
           <div className="flex min-h-screen flex-col">
             <AnnouncementBar />
 
-            <Navbar />
+            <Navbar
+              categories={
+                navigationCategories
+              }
+            />
 
             <div className="flex-1">
               {children}

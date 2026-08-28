@@ -415,7 +415,7 @@ export default function ProductCard({
                       </span>
                     </div>
 
-                    <span className="max-w-40 truncate text-right text-[0.8125rem] font-semibold text-foreground sm:text-sm">
+                    <span className="max-w-40 truncate text-right text-[0.8125rem] font-semibold text-foreground sm:text-[0.875rem]">
                       {
                         specification.value
                       }

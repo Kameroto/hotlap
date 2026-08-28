@@ -7,6 +7,9 @@ import {
 } from "next/navigation";
 
 import {
+  useCallback,
+  useEffect,
+  useRef,
   useState,
 } from "react";
 
@@ -16,10 +19,11 @@ import {
   Search,
   ShoppingCart,
   UserRound,
-  X,
 } from "lucide-react";
 
 import Container from "@/components/layout/Container";
+import DesktopProductsMenu from "@/components/layout/DesktopProductsMenu";
+import MobileNavigation from "@/components/layout/MobileNavigation";
 
 import {
   buttonVariants,
@@ -28,6 +32,10 @@ import {
 import {
   cn,
 } from "@/lib/utils";
+
+import type {
+  Category,
+} from "@/lib/api/types";
 
 import {
   useCartStore,
@@ -60,7 +68,13 @@ const navigationLinks = [
   },
 ];
 
-export default function Navbar() {
+type NavbarProps = {
+  categories: Category[];
+};
+
+export default function Navbar({
+  categories,
+}: NavbarProps) {
   const pathname =
     usePathname();
 
@@ -68,6 +82,17 @@ export default function Navbar() {
     mobileMenuIsOpen,
     setMobileMenuIsOpen,
   ] = useState(false);
+
+  const [
+    productsMenuIsOpen,
+    setProductsMenuIsOpen,
+  ] = useState(false);
+
+  const mobileMenuTriggerRef =
+    useRef<HTMLButtonElement>(null);
+
+  const productsMenuTriggerRef =
+    useRef<HTMLButtonElement>(null);
 
   const wishlistItems =
     useWishlistStore(
@@ -122,11 +147,72 @@ export default function Navbar() {
     );
   }
 
-  function closeMobileMenu() {
-    setMobileMenuIsOpen(
-      false,
+  const closeMobileMenu =
+    useCallback(() => {
+      setMobileMenuIsOpen(
+        false,
+      );
+    }, []);
+
+  const setProductsMenuOpen =
+    useCallback(
+      (isOpen: boolean) => {
+        setProductsMenuIsOpen(
+          isOpen,
+        );
+      },
+      [],
     );
-  }
+
+  useEffect(() => {
+    const frame =
+      requestAnimationFrame(() => {
+        closeMobileMenu();
+        setProductsMenuIsOpen(
+          false,
+        );
+      });
+
+    return () => {
+      cancelAnimationFrame(
+        frame,
+      );
+    };
+  }, [
+    closeMobileMenu,
+    pathname,
+  ]);
+
+  useEffect(() => {
+    const desktopMediaQuery =
+      window.matchMedia(
+        "(min-width: 1024px)",
+      );
+
+    function synchronizeNavigation(
+      event: MediaQueryListEvent,
+    ) {
+      if (event.matches) {
+        closeMobileMenu();
+      } else {
+        setProductsMenuIsOpen(
+          false,
+        );
+      }
+    }
+
+    desktopMediaQuery.addEventListener(
+      "change",
+      synchronizeNavigation,
+    );
+
+    return () => {
+      desktopMediaQuery.removeEventListener(
+        "change",
+        synchronizeNavigation,
+      );
+    };
+  }, [closeMobileMenu]);
 
   return (
     <header className="sticky top-0 z-50 border-b border-white/8 bg-[#080a0c]/92 shadow-[0_10px_40px_rgba(0,0,0,0.22)] backdrop-blur-xl">
@@ -156,6 +242,28 @@ export default function Navbar() {
           <div className="hidden h-full items-center gap-7 lg:flex">
             {navigationLinks.map(
               (link) => {
+                if (
+                  link.href ===
+                  "/products"
+                ) {
+                  return (
+                    <DesktopProductsMenu
+                      key={link.href}
+                      categories={categories}
+                      isOpen={
+                        productsMenuIsOpen
+                      }
+                      pathname={pathname}
+                      onOpenChange={
+                        setProductsMenuOpen
+                      }
+                      triggerRef={
+                        productsMenuTriggerRef
+                      }
+                    />
+                  );
+                }
+
                 const isActive =
                   isNavigationLinkActive(
                     link.href,
@@ -175,7 +283,7 @@ export default function Navbar() {
                         : undefined
                     }
                     className={cn(
-                      "relative flex h-full items-center text-sm font-medium transition-colors duration-300",
+                      "relative flex h-full items-center text-sm font-semibold transition-colors duration-300",
                       isActive
                         ? "text-foreground"
                         : "text-muted-foreground hover:text-foreground",
@@ -305,6 +413,7 @@ export default function Navbar() {
             </Link>
 
             <button
+              ref={mobileMenuTriggerRef}
               type="button"
               aria-label={
                 mobileMenuIsOpen
@@ -316,12 +425,18 @@ export default function Navbar() {
               }
               aria-controls="mobile-navigation"
               onClick={() =>
-                setMobileMenuIsOpen(
-                  (
-                    currentValue,
-                  ) =>
-                    !currentValue,
-                )
+                {
+                  setProductsMenuIsOpen(
+                    false,
+                  );
+
+                  setMobileMenuIsOpen(
+                    (
+                      currentValue,
+                    ) =>
+                      !currentValue,
+                  );
+                }
               }
               className={cn(
                 buttonVariants({
@@ -333,112 +448,27 @@ export default function Navbar() {
                 "border-white/0 text-muted-foreground hover:text-foreground lg:hidden",
               )}
             >
-              {mobileMenuIsOpen ? (
-                <X className="size-5" />
-              ) : (
-                <Menu className="size-5" />
-              )}
+              <Menu className="size-5" />
             </button>
           </div>
         </nav>
-
-        {mobileMenuIsOpen && (
-          <div
-            id="mobile-navigation"
-            className="border-t border-white/8 pb-5 pt-4 lg:hidden"
-          >
-            <form
-              action="/products"
-              method="get"
-              className="mb-4"
-            >
-              <div className="relative">
-                <Search
-                  aria-hidden="true"
-                  className="absolute top-1/2 left-4 size-4 -translate-y-1/2 text-muted-foreground"
-                />
-
-                <label
-                  htmlFor="mobile-product-search"
-                  className="sr-only"
-                >
-                  Search HotLap products
-                </label>
-
-                <input
-                  id="mobile-product-search"
-                  name="search"
-                  type="search"
-                  placeholder="Search products..."
-                  className="h-11 w-full rounded-lg border border-white/10 bg-white/[0.035] pr-4 pl-11 text-sm outline-none transition-all focus:border-primary/70 focus:ring-2 focus:ring-primary/15"
-                />
-              </div>
-            </form>
-
-            <nav
-              className="grid gap-1"
-              aria-label="Mobile navigation"
-            >
-              {navigationLinks.map(
-                (link) => {
-                  const isActive =
-                    isNavigationLinkActive(
-                      link.href,
-                    );
-
-                  return (
-                    <Link
-                      key={
-                        link.href
-                      }
-                      href={
-                        link.href
-                      }
-                      onClick={
-                        closeMobileMenu
-                      }
-                      aria-current={
-                        isActive
-                          ? "page"
-                          : undefined
-                      }
-                      className={cn(
-                        "flex items-center rounded-lg border-l-2 px-4 py-3 text-sm font-medium transition-all duration-300",
-                        isActive
-                          ? "border-primary bg-primary/8 text-foreground"
-                          : "border-transparent text-muted-foreground hover:bg-white/5 hover:text-foreground",
-                      )}
-                    >
-                      {
-                        link.label
-                      }
-                    </Link>
-                  );
-                },
-              )}
-
-              <Link
-                href="/account"
-                onClick={
-                  closeMobileMenu
-                }
-                className={cn(
-                  "mt-2 flex items-center gap-3 rounded-lg border border-white/10 px-4 py-3 text-sm font-medium transition-all",
-                  pathname.startsWith(
-                    "/account",
-                  )
-                    ? "border-primary/40 bg-primary/8 text-foreground"
-                    : "text-muted-foreground hover:bg-white/5 hover:text-foreground",
-                )}
-              >
-                <UserRound className="size-4" />
-
-                Customer Account
-              </Link>
-            </nav>
-          </div>
-        )}
       </Container>
+
+      <MobileNavigation
+        open={mobileMenuIsOpen}
+        onClose={closeMobileMenu}
+        triggerRef={
+          mobileMenuTriggerRef
+        }
+        pathname={pathname}
+        categories={categories}
+        cartQuantity={
+          visibleCartQuantity
+        }
+        wishlistCount={
+          visibleWishlistCount
+        }
+      />
     </header>
   );
 }

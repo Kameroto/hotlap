@@ -31,7 +31,7 @@ export default function ErrorPage({
           <AlertTriangle className="h-9 w-9" />
         </div>
 
-        <p className="mt-8 text-sm font-semibold uppercase tracking-[0.2em] text-red-600">
+        <p className="mt-8 text-[0.875rem] font-semibold uppercase tracking-[0.2em] text-red-600">
           Something went wrong
         </p>
 

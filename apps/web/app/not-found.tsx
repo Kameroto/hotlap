@@ -17,7 +17,7 @@ export default function NotFoundPage() {
           <SearchX className="h-9 w-9 text-muted-foreground" />
         </div>
 
-        <p className="mt-8 text-sm font-semibold uppercase tracking-[0.2em] text-red-600">
+        <p className="mt-8 text-[0.875rem] font-semibold uppercase tracking-[0.2em] text-red-600">
           Error 404
         </p>
 

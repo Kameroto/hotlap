@@ -22,7 +22,7 @@ export default function ProfilePage() {
       />
 
       <div className="relative">
-        <div className="flex items-center gap-2 text-sm font-semibold uppercase tracking-[0.2em] text-primary">
+        <div className="flex items-center gap-2 text-[0.875rem] font-semibold uppercase tracking-[0.2em] text-primary">
           <Flag className="size-4" />
           Personal Information
         </div>

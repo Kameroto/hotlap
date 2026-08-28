@@ -62,8 +62,8 @@ export default function ProductPrice({
               "text-muted-foreground line-through",
 
               size === "large"
-                ? "text-base sm:text-lg"
-                : "text-sm",
+                ? "text-[1rem] sm:text-lg"
+                : "text-[0.875rem]",
             )}
           >
             {formatCurrency(

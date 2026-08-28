@@ -557,7 +557,7 @@ function HobbyVsToySlide() {
       }
     >
       <div className="w-full">
-        <div className="mb-4 grid grid-cols-[0.7fr_1fr_1fr] gap-2 text-[0.8125rem] font-bold uppercase tracking-[0.12em] sm:grid-cols-[0.8fr_1fr_1fr] sm:text-sm">
+        <div className="mb-4 grid grid-cols-[0.7fr_1fr_1fr] gap-2 text-[0.8125rem] font-bold uppercase tracking-[0.12em] sm:grid-cols-[0.8fr_1fr_1fr] sm:text-[0.875rem]">
           <span />
 
           <div className="rounded-lg border border-primary/30 bg-primary/8 px-2 py-3 text-center text-primary sm:px-3">
@@ -583,17 +583,17 @@ function HobbyVsToySlide() {
                 }
                 className="grid grid-cols-[0.7fr_1fr_1fr] gap-2 border-b border-white/8 p-3 last:border-b-0 sm:grid-cols-[0.8fr_1fr_1fr] sm:p-4"
               >
-                <div className="flex items-start gap-2 text-[0.8125rem] font-semibold text-foreground sm:text-sm">
+                <div className="flex items-start gap-2 text-[0.8125rem] font-semibold text-foreground sm:text-[0.875rem]">
                   <Icon className="mt-0.5 hidden size-4 shrink-0 text-primary sm:block" />
 
                   {label}
                 </div>
 
-                <p className="text-[0.8125rem] leading-5 text-foreground/90 sm:text-sm">
+                <p className="text-[0.8125rem] leading-5 text-foreground/90 sm:text-[0.875rem]">
                   {hobby}
                 </p>
 
-                <p className="text-[0.8125rem] leading-5 text-muted-foreground sm:text-sm">
+                <p className="text-[0.8125rem] leading-5 text-muted-foreground sm:text-[0.875rem]">
                   {toy}
                 </p>
               </div>

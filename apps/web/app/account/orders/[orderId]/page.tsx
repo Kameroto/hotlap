@@ -305,7 +305,7 @@ export default function OrderDetailsPage() {
           </div>
 
           <span
-            className={`w-fit max-w-full rounded-full px-4 py-2 text-sm font-bold ${getOrderStatusClassName(
+            className={`w-fit max-w-full rounded-full px-4 py-2 text-[0.875rem] font-bold ${getOrderStatusClassName(
               order.status,
             )}`}
           >

@@ -22,7 +22,7 @@ const buttonVariants =
       "whitespace-nowrap",
       "rounded-lg",
       "border",
-      "text-sm",
+      "text-[0.875rem]",
       "font-semibold",
       "tracking-[-0.01em]",
       "outline-none",
@@ -119,10 +119,10 @@ const buttonVariants =
             "h-9 gap-1.5 px-3.5 text-xs",
 
           lg:
-            "h-12 gap-2.5 px-6 text-sm",
+            "h-12 gap-2.5 px-6 text-[0.875rem]",
 
           xl:
-            "h-14 gap-3 px-8 text-base",
+            "h-14 gap-3 px-8 text-[1rem]",
 
           icon:
             "size-10",

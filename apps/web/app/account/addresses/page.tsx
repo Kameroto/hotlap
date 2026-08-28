@@ -22,7 +22,7 @@ export default function AddressesPage() {
       />
 
       <div className="relative min-w-0">
-        <div className="flex items-center gap-2 text-sm font-semibold uppercase tracking-[0.2em] text-primary">
+        <div className="flex items-center gap-2 text-[0.875rem] font-semibold uppercase tracking-[0.2em] text-primary">
           <MapPinned
             aria-hidden="true"
             className="size-4"

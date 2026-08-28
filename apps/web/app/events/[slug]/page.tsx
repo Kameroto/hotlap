@@ -114,7 +114,7 @@ export default async function EventDetailsPage({
         <Container>
           {isCancelled && (
             <aside className="relative mb-7 rounded-2xl border border-destructive/35 bg-destructive/8 px-5 py-5 sm:px-6">
-              <p className="text-sm font-bold uppercase tracking-[0.14em] text-destructive">
+              <p className="text-[0.875rem] font-bold uppercase tracking-[0.14em] text-destructive">
                 Cancelled
               </p>
               <p className="mt-2 max-w-3xl text-sm leading-7 text-muted-foreground">

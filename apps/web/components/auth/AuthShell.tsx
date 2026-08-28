@@ -54,7 +54,7 @@ export default function AuthShell({
           </Link>
 
           <div className="mt-20 max-w-xl">
-            <p className="text-sm font-semibold uppercase tracking-[0.25em] text-red-400">
+            <p className="text-[0.875rem] font-semibold uppercase tracking-[0.25em] text-red-400">
               Built for RC enthusiasts
             </p>
 
@@ -111,7 +111,7 @@ export default function AuthShell({
               <ShieldCheck className="h-6 w-6" />
             </div>
 
-            <p className="mt-7 text-sm font-semibold uppercase tracking-[0.2em] text-red-600">
+            <p className="mt-7 text-[0.875rem] font-semibold uppercase tracking-[0.2em] text-red-600">
               {eyebrow}
             </p>
 
