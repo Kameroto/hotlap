@@ -23,7 +23,7 @@ export default function CTAButtons({
   return (
     <div
       className={cn(
-        "flex flex-col gap-3 sm:flex-row sm:flex-wrap",
+        "flex min-w-0 max-w-full flex-col gap-3 sm:flex-row sm:flex-wrap",
         className,
       )}
     >
@@ -33,10 +33,10 @@ export default function CTAButtons({
           buttonVariants({
             size: "xl",
           }),
-          "group min-w-[190px]",
+          "group w-full max-w-full min-w-0 sm:w-auto sm:min-w-[190px]",
         )}
       >
-        Shop RC Cars
+        Shop RC Products
 
         <ArrowRight
           aria-hidden="true"
@@ -54,7 +54,7 @@ export default function CTAButtons({
             size:
               "xl",
           }),
-          "group min-w-[180px] border-white/18 bg-black/10 backdrop-blur-sm hover:border-primary/60 hover:bg-primary/5",
+          "group w-full max-w-full min-w-0 border-white/18 bg-black/10 backdrop-blur-sm hover:border-primary/60 hover:bg-primary/5 sm:w-auto sm:min-w-[180px]",
         )}
       >
         Explore Events
