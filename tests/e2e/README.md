@@ -59,8 +59,32 @@ pnpm exec playwright test tests/e2e/chromium-smoke.spec.ts tests/e2e/overflow-de
 Workspace typecheck/lint scripts do not include root E2E files. Check these explicitly using the existing installed tools:
 
 ```bash
-pnpm --filter web exec tsc --noEmit --strict --skipLibCheck --target ES2022 --module ESNext --moduleResolution bundler --lib ES2022,DOM,DOM.Iterable ../../playwright.config.ts ../../tests/e2e/responsive-overflow.spec.ts ../../tests/e2e/overflow-detector.spec.ts ../../tests/e2e/chromium-smoke.spec.ts
+pnpm --filter web exec tsc -p ../../tests/e2e/tsconfig.json
 node services/api/node_modules/eslint/bin/eslint.js --config services/api/eslint.config.mjs tests/e2e playwright.config.ts --max-warnings=0
 ```
 
 Limits: this is Chromium emulation, not physical Android/iOS or WebKit. Measurements describe element geometry with axis-aligned ancestor clips, not pixel-level filter/shadow ink, arbitrary clip-path/mask shapes, rotated clipping regions, pseudo-elements or closed shadow roots. Root scroll-range checks remain independent of the geometry scan. Gestures cover the selected homepage surfaces in both directions; this is not a general accessibility/performance or site-wide regression suite. Checkpoints verify settled positions, not every transient compositor frame.
+
+
+## UI.7.2A navigation keyboard coverage
+
+Run the focused tests against already running web/API/PostgreSQL services:
+
+```bash
+pnpm exec playwright test tests/e2e/navigation-keyboard.spec.ts --workers=1
+pnpm exec playwright test --workers=1
+```
+
+The existing configuration may start missing application servers. Check readiness first when server startup is outside the authorized task. This batch does not change that configuration or run any database setup.
+
+`navigation-keyboard.spec.ts` uses desktop 1440×900 and mobile-sized 375×812 Chromium pages. It covers Products disclosure Enter/Space/ArrowDown opening, forward/reverse Tab and outside dismissal; modal initial focus, Tab/Shift+Tab, Escape/close buttons, scroll locking/restoration; mobile menu links; menu-to-search/cart handoffs; and keyboard search clearing. Mobile-sized tests intentionally exercise keyboard input, not touch emulation or UI.6 gestures. Role/name locators are preferred; the desktop menu uses the existing `aria-controls` ID and native `dialog:modal` selectors inspect modal state.
+
+Focus is reached using actual Tab input. Chromium can temporarily move focus into browser chrome when tabbing past a native dialog boundary (`document.hasFocus() === false`, active element reported as BODY). The tests record that state and require the next same-direction Tab to return to the modal. Focus on the page BODY while the document still has focus is **not** exempted, and no background control may receive focus. A search-clear failure is retained if removing the focused clear button loses document focus context rather than returning useful focus to the input.
+
+`helpers/signed-out-test.ts` provides a new empty-storage context with service workers blocked. It intercepts POST `/api/v1/auth/refresh` with the existing signed-out 401 contract and GET `/api/v1/cart` with a typed, empty `ServerCart`. Public product/category/event GETs are allowlisted; other API paths and unexpected state-changing browser requests are blocked and fail the test. Credentials, query strings and payloads are not logged. The six existing homepage tests use the same fixture; their UI.6 assertions are unchanged. In-memory smoke/detector cases do not load the application.
+
+Browser interception does not control Next.js server-side fetches. The tested `/about` page uses global category loading; the existing homepage/catalogue cases use public server-side read paths. This is not an isolated backend integration test, and unrelated activity in the running services is outside the browser guard's visibility.
+
+Each test using the fixture attaches `keyboard-safety.json` with request decisions, page/request error summaries, active element, document focus, dialog/disclosure states and root scroll/overflow checkpoints. Failures also retain the configured screenshot and trace plus `keyboard-failure.png`. Artifacts live under `test-results/` and are linked in `playwright-report/index.html`. Test-specific TypeScript configuration reuses the web alias and installed Node types so fixture types are checked against actual application contracts.
+
+Production defects are not marked expected failures or fixed in this test batch. A nonzero suite result must be reviewed with its diagnostics.

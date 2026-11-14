@@ -79,6 +79,9 @@ export default function SearchOverlay({
   const requestGenerationRef =
     useRef(0);
 
+  const inputRef =
+    useRef<HTMLInputElement>(null);
+
   const normalizedQuery =
     query.trim();
   const queryIsMeaningful =
@@ -194,6 +197,10 @@ export default function SearchOverlay({
     setQuery("");
     setProducts([]);
     setPhase("initial");
+
+    if (open) {
+      inputRef.current?.focus({ preventScroll: true });
+    }
   }
 
   function submitSearch(
@@ -273,6 +280,7 @@ export default function SearchOverlay({
             />
 
             <input
+              ref={inputRef}
               id="overlay-product-search"
               autoFocus
               type="search"

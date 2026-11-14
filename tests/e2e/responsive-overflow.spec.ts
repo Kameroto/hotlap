@@ -1,6 +1,7 @@
 import { writeFile } from 'node:fs/promises';
-import { expect, test, type Locator, type Page, type TestInfo } from '@playwright/test';
+import { expect, type Locator, type Page, type TestInfo } from '@playwright/test';
 import { measureOverflow } from './helpers/overflow';
+import { test } from './helpers/signed-out-test';
 
 const widths = [375, 390, 430, 768, 1024, 1440] as const;
 const tolerance = 1;
