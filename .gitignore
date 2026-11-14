@@ -13,6 +13,9 @@ dist
 .next
 out
 coverage
+playwright-report
+test-results
+blob-report
 
 # Generated Prisma client
 services/api/src/generated
