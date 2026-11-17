@@ -1,0 +1,204 @@
+{
+  "formatVersion": 1,
+  "nextVersion": "16.2.12",
+  "license": "OFL-1.1",
+  "licenseSourceCommit": "7af0d90b4d532ffa4b041937b560c6df4e7b1e95",
+  "provenance": {
+    "source": "Google Fonts binaries retained unchanged from Next.js 16.2.12 next/font/google output",
+    "successfulRuntime": "catalogue-pIuj5G",
+    "verifiedExperiment": "font-feasibility-20261117T150516Z-706de8b3",
+    "individualCdnUrlsCaptured": false
+  },
+  "fonts": [
+    {
+      "family": "Rubik",
+      "url": "https://fonts.googleapis.com/css2?family=Rubik:wght@400;500;600&display=swap",
+      "variants": [
+        "normal:400",
+        "normal:500",
+        "normal:600"
+      ],
+      "faces": 18,
+      "latinFaces": 3,
+      "cssFile": "rubik.css",
+      "cssSha256": "5070d900990797dedc48cad656c208f1710d28a6fa330c0f29f1eae162d9b663"
+    },
+    {
+      "family": "Tomorrow",
+      "url": "https://fonts.googleapis.com/css2?family=Tomorrow:ital,wght@0,700;1,700&display=swap",
+      "variants": [
+        "italic:700",
+        "normal:700"
+      ],
+      "faces": 4,
+      "latinFaces": 2,
+      "cssFile": "tomorrow.css",
+      "cssSha256": "4983e09f9bcea8d37e2325eca71a55531e85afa83f70a1529ee43db3014452b7"
+    },
+    {
+      "family": "Geist Mono",
+      "url": "https://fonts.googleapis.com/css2?family=Geist+Mono:wght@100..900&display=swap",
+      "variants": [
+        "normal:100 900"
+      ],
+      "faces": 6,
+      "latinFaces": 1,
+      "cssFile": "geist-mono.css",
+      "cssSha256": "7c410daf7e9f1413c7ccae3f2668fcdfbf9fe03469cd64cc247edb8aa864d3b0"
+    }
+  ],
+  "assets": [
+    {
+      "name": "098850a6eb1f8577-s.1e7lfzpvfrh7f.woff2",
+      "family": "Rubik",
+      "sha256": "fa1623ef550cb4742dc8a7449d30385f9ed0b453e85eb9c49b07c3dfcf945540",
+      "bytes": 32480,
+      "metadata": "Rubik Light|Light,Regular|False|50\nRubik Light|Regular|False|80\nRubik Light|Medium|False|100\nRubik Light|SemiBold|False|180\nRubik Light|Bold|False|200\nRubik Light|ExtraBold|False|205\nRubik Light|Black|False|210\nRubik Light||True|[50 210]",
+      "file": "assets/098850a6eb1f8577-s.1e7lfzpvfrh7f.woff2"
+    },
+    {
+      "name": "6dac7af80352e41b-s.1-avrnevmoafi.woff2",
+      "family": "Rubik",
+      "sha256": "79891522e6f702d4f365da6048b12acb0b453dd7b0705a431f2b10f4400896a4",
+      "bytes": 12288,
+      "metadata": "Rubik Light|Light,Regular|False|50\nRubik Light|Regular|False|80\nRubik Light|Medium|False|100\nRubik Light|SemiBold|False|180\nRubik Light|Bold|False|200\nRubik Light|ExtraBold|False|205\nRubik Light|Black|False|210\nRubik Light||True|[50 210]",
+      "file": "assets/6dac7af80352e41b-s.1-avrnevmoafi.woff2"
+    },
+    {
+      "name": "21445b8bd0ec5702-s.1n1ntp5se85-_.woff2",
+      "family": "Rubik",
+      "sha256": "963fc62d2cf3e59e6f338db71b85b5ea86dd009fff859116d51a31a9b98d1d30",
+      "bytes": 15108,
+      "metadata": "Rubik Light|Light,Regular|False|50\nRubik Light|Regular|False|80\nRubik Light|Medium|False|100\nRubik Light|SemiBold|False|180\nRubik Light|Bold|False|200\nRubik Light|ExtraBold|False|205\nRubik Light|Black|False|210\nRubik Light||True|[50 210]",
+      "file": "assets/21445b8bd0ec5702-s.1n1ntp5se85-_.woff2"
+    },
+    {
+      "name": "87c7f5b5afcd23bd-s.0kf5m0zv7sxld.woff2",
+      "family": "Rubik",
+      "sha256": "e59af50ac91644907bc91d5a94bfa3be3ec32eac618fa4f841862507b21586ae",
+      "bytes": 9352,
+      "metadata": "Rubik Light|Light,Regular|False|50\nRubik Light|Regular|False|80\nRubik Light|Medium|False|100\nRubik Light|SemiBold|False|180\nRubik Light|Bold|False|200\nRubik Light|ExtraBold|False|205\nRubik Light|Black|False|210\nRubik Light||True|[50 210]",
+      "file": "assets/87c7f5b5afcd23bd-s.0kf5m0zv7sxld.woff2"
+    },
+    {
+      "name": "d25394c5b8ff78eb-s.0ongx-zmnmtio.woff2",
+      "family": "Rubik",
+      "sha256": "b11446f4d0b897435488492cdc6cd612f33748e2b010ac79eff74ea861cf8970",
+      "bytes": 19288,
+      "metadata": "Rubik Light|Light,Regular|False|50\nRubik Light|Regular|False|80\nRubik Light|Medium|False|100\nRubik Light|SemiBold|False|180\nRubik Light|Bold|False|200\nRubik Light|ExtraBold|False|205\nRubik Light|Black|False|210\nRubik Light||True|[50 210]",
+      "file": "assets/d25394c5b8ff78eb-s.0ongx-zmnmtio.woff2"
+    },
+    {
+      "name": "c9f6ebf08ddd616b-s.p.0sv86lbjkn8rn.woff2",
+      "family": "Rubik",
+      "sha256": "99ec7ccb40cf143f977c893649deece6cc2dcc7c0ff82ebf84b6584090f207ea",
+      "bytes": 35324,
+      "metadata": "Rubik Light|Light,Regular|False|50\nRubik Light|Regular|False|80\nRubik Light|Medium|False|100\nRubik Light|SemiBold|False|180\nRubik Light|Bold|False|200\nRubik Light|ExtraBold|False|205\nRubik Light|Black|False|210\nRubik Light||True|[50 210]",
+      "file": "assets/c9f6ebf08ddd616b-s.p.0sv86lbjkn8rn.woff2"
+    },
+    {
+      "name": "1754eb9736cdece6-s.0mtg0tkl92s05.woff2",
+      "family": "Tomorrow",
+      "sha256": "2baf1d94ba822a1f23aad4e2d3572877c72d6c6c8462598f65a36b37c14c11b0",
+      "bytes": 7976,
+      "metadata": "Tomorrow|Bold Italic|False|200",
+      "file": "assets/1754eb9736cdece6-s.0mtg0tkl92s05.woff2"
+    },
+    {
+      "name": "385054b3ef9225e9-s.p.2dc5au3-cgsb7.woff2",
+      "family": "Tomorrow",
+      "sha256": "60b3037f62a6f1ed91e3110a4cf3fddd666bc983c164fc28fe87c9c9bf46ce62",
+      "bytes": 8084,
+      "metadata": "Tomorrow|Bold Italic|False|200",
+      "file": "assets/385054b3ef9225e9-s.p.2dc5au3-cgsb7.woff2"
+    },
+    {
+      "name": "1e943430ad143da3-s.177vnns302-t4.woff2",
+      "family": "Tomorrow",
+      "sha256": "8bed35c03f800f373e74a602594864ded99da1c2d88eb5276ba8b7571304c400",
+      "bytes": 7588,
+      "metadata": "Tomorrow|Bold|False|200",
+      "file": "assets/1e943430ad143da3-s.177vnns302-t4.woff2"
+    },
+    {
+      "name": "b872b39ab8191954-s.p.1yxri8axqzv--.woff2",
+      "family": "Tomorrow",
+      "sha256": "e2a592f2a35a230081e2b423d2a94c3ad58f410fb2b85c9d5f6c2b805b22241d",
+      "bytes": 7576,
+      "metadata": "Tomorrow|Bold|False|200",
+      "file": "assets/b872b39ab8191954-s.p.1yxri8axqzv--.woff2"
+    },
+    {
+      "name": "5ce348bf30bf5439-s.31988l_ccedte.woff2",
+      "family": "Geist Mono",
+      "sha256": "e27f657e38d52887baa3b6b2f812bef93dfdd356f0810e40edd4ee284cc7e9f6",
+      "bytes": 6204,
+      "metadata": "Geist Mono|Regular|False|80\nGeist Mono|Thin|False|0\nGeist Mono|ExtraLight|False|40\nGeist Mono|Light|False|50\nGeist Mono|Medium|False|100\nGeist Mono|SemiBold|False|180\nGeist Mono|Bold|False|200\nGeist Mono|ExtraBold|False|205\nGeist Mono|Black|False|210\nGeist Mono||True|[0 210]",
+      "file": "assets/5ce348bf30bf5439-s.31988l_ccedte.woff2"
+    },
+    {
+      "name": "4fa387ec64143e14-s.2tuy5pz7dlieh.woff2",
+      "family": "Geist Mono",
+      "sha256": "75b3bedbebc35f347c0ae3b416aa871941555357e7b0f83767eb5987875589ed",
+      "bytes": 12872,
+      "metadata": "Geist Mono|Regular|False|80\nGeist Mono|Thin|False|0\nGeist Mono|ExtraLight|False|40\nGeist Mono|Light|False|50\nGeist Mono|Medium|False|100\nGeist Mono|SemiBold|False|180\nGeist Mono|Bold|False|200\nGeist Mono|ExtraBold|False|205\nGeist Mono|Black|False|210\nGeist Mono||True|[0 210]",
+      "file": "assets/4fa387ec64143e14-s.2tuy5pz7dlieh.woff2"
+    },
+    {
+      "name": "6306c77e7c8268e4-s.2dbetqa9o8jxf.woff2",
+      "family": "Geist Mono",
+      "sha256": "d67e4a94ba498635f764ddca7d1ec4271f5642f032eb24b426764480f66f8497",
+      "bytes": 5892,
+      "metadata": "Geist Mono|Regular|False|80\nGeist Mono|Thin|False|0\nGeist Mono|ExtraLight|False|40\nGeist Mono|Light|False|50\nGeist Mono|Medium|False|100\nGeist Mono|SemiBold|False|180\nGeist Mono|Bold|False|200\nGeist Mono|ExtraBold|False|205\nGeist Mono|Black|False|210\nGeist Mono||True|[0 210]",
+      "file": "assets/6306c77e7c8268e4-s.2dbetqa9o8jxf.woff2"
+    },
+    {
+      "name": "7d817b4c03b0c5f1-s.1uyisp29ctx0d.woff2",
+      "family": "Geist Mono",
+      "sha256": "16e1d48b6dd29eb240aec5db36184eb182933c082cd43de7f35af686d58087d2",
+      "bytes": 7728,
+      "metadata": "Geist Mono|Regular|False|80\nGeist Mono|Thin|False|0\nGeist Mono|ExtraLight|False|40\nGeist Mono|Light|False|50\nGeist Mono|Medium|False|100\nGeist Mono|SemiBold|False|180\nGeist Mono|Bold|False|200\nGeist Mono|ExtraBold|False|205\nGeist Mono|Black|False|210\nGeist Mono||True|[0 210]",
+      "file": "assets/7d817b4c03b0c5f1-s.1uyisp29ctx0d.woff2"
+    },
+    {
+      "name": "bbc41e54d2fcbd21-s.1rgnod-3esatf.woff2",
+      "family": "Geist Mono",
+      "sha256": "745994b5cd950ec201b66526375f057d540847cccfc70f4f24f5f571d26d3923",
+      "bytes": 14712,
+      "metadata": "Geist Mono|Regular|False|80\nGeist Mono|Thin|False|0\nGeist Mono|ExtraLight|False|40\nGeist Mono|Light|False|50\nGeist Mono|Medium|False|100\nGeist Mono|SemiBold|False|180\nGeist Mono|Bold|False|200\nGeist Mono|ExtraBold|False|205\nGeist Mono|Black|False|210\nGeist Mono||True|[0 210]",
+      "file": "assets/bbc41e54d2fcbd21-s.1rgnod-3esatf.woff2"
+    },
+    {
+      "name": "797e433ab948586e-s.p.0r6juujl39pe6.woff2",
+      "family": "Geist Mono",
+      "sha256": "5f3d6ad60f29d6cb708414ec6887163d63bf197377ef5417d2483ff31ace6c3b",
+      "bytes": 23108,
+      "metadata": "Geist Mono|Regular|False|80\nGeist Mono|Thin|False|0\nGeist Mono|ExtraLight|False|40\nGeist Mono|Light|False|50\nGeist Mono|Medium|False|100\nGeist Mono|SemiBold|False|180\nGeist Mono|Bold|False|200\nGeist Mono|ExtraBold|False|205\nGeist Mono|Black|False|210\nGeist Mono||True|[0 210]",
+      "file": "assets/797e433ab948586e-s.p.0r6juujl39pe6.woff2"
+    }
+  ],
+  "licenses": [
+    {
+      "file": "licenses/rubik-OFL.txt",
+      "url": "https://raw.githubusercontent.com/google/fonts/7af0d90b4d532ffa4b041937b560c6df4e7b1e95/ofl/rubik/OFL.txt",
+      "sha256": "3cb6a6084f5d942a8f3b5fda0f6a90dde18d7f7f1798886f4043d18f8c1a811e",
+      "family": "Rubik",
+      "upstreamSha256": "472cbe7c25441df63e9c7864b43eb3c0f4b3df950c66a76224e6cfe1eae843fb"
+    },
+    {
+      "file": "licenses/tomorrow-OFL.txt",
+      "url": "https://raw.githubusercontent.com/google/fonts/7af0d90b4d532ffa4b041937b560c6df4e7b1e95/ofl/tomorrow/OFL.txt",
+      "sha256": "b8f89be95b260296d0b051e14e56edf0b475acbe2576c79cd6f7d2803c90a8a6",
+      "family": "Tomorrow",
+      "upstreamSha256": "1dd4eaacd1da1bfb7e1d14dd5af0279c17d4503fde55abc628bdaccc63ae9eca"
+    },
+    {
+      "file": "licenses/geistmono-OFL.txt",
+      "url": "https://raw.githubusercontent.com/google/fonts/7af0d90b4d532ffa4b041937b560c6df4e7b1e95/ofl/geistmono/OFL.txt",
+      "sha256": "f12f59163d92084b0473315ae4566cde0c1233d940ae464f5225a69c347cc691",
+      "family": "Geist Mono",
+      "upstreamSha256": "1781d2806a07d91c4edf4740b88449fab7d0eadad53f7c351b94cd4d4eb8c00f"
+    }
+  ],
+  "licenseTextNormalization": "Trailing spaces and EOF whitespace normalized; copyright notices and license terms unchanged. Upstream byte hashes retained separately."
+}

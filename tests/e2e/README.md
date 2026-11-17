@@ -1,5 +1,37 @@
 # HotLap browser tests
 
+## Isolated catalogue runner foundation
+
+From the repository root, run the test-only launcher smoke check with installed Node/tsx tooling:
+
+```bash
+TSX_DISABLE_CACHE=1 node --import ./services/api/node_modules/tsx/dist/loader.mjs ./tests/e2e/helpers/catalogue-runner.ts
+```
+
+This Linux/WSL launcher uses the immutable fixture on `127.0.0.1:4100` and a staged Next.js instance on `127.0.0.1:3100`. Occupied test ports are rejected; existing services are never replaced. It does not need PostgreSQL or the real API. It does not use the existing Playwright configuration.
+
+Each run lives in `<repository-root>/.hotlap-e2e-runtime/catalogue-*`, relative to the repository root. This ignored location is separate from Playwright's disposable output directories. Source/configuration/assets are copied without environment files or build caches; only installed `node_modules` is linked. Generated Next.js files stay in the copy. No dependency installation or CPU profiling occurs.
+
+Fonts are deterministic and test-only. Before staging, the runner verifies all 16 vendored WOFF2 files, three CSS snapshots and three OFL notices against `fixtures/fonts/manifest.json`. [Font provenance, licensing and hashes](fixtures/fonts/README.md) are retained with the fixtures. No files are loaded from previous ignored runs, and no fonts or licenses are downloaded from external services at runtime. With the fixtures and normal dependencies present, a fresh clone is sufficient; a missing original `next-env.d.ts` is generated only inside staging.
+
+An owned `127.0.0.1` font server uses an OS-assigned port and an exact read-only asset allowlist. The runner generates runtime-specific CommonJS stylesheet responses and injects `NEXT_FONT_GOOGLE_MOCKED_RESPONSES` only into its Next child. This internal contract is pinned to Next.js 16.2.12; upgrades fail the version check pending review. Turbopack still fetches the actual binaries over HTTP, from this loopback listener. Readiness additionally verifies all 16 served/emitted font hashes and mock evaluation, without live Google Fonts fallback.
+
+The Next.js `Ready` message starts the next readiness stage; it is not catalogue readiness. Exactly one `/products` request must complete with HTTP 200, all six fixture products, both categories, and category/product GET evidence in the fixture journal. The default cold-route deadline is **240,000 ms**. Set `HOTLAP_CATALOGUE_READY_TIMEOUT_MS` to an integer from 1,000 through 240,000 to lower it. Initial Next.js startup has a separate 60-second limit. Neither stage retries.
+
+`startCatalogueRunner({ coldTimeoutMs })` in `helpers/catalogue-runner.ts` returns `{ baseURL, runtimeDir, stop }` only after validation. Consumers must `await stop()` in `finally`. The CLI performs this shutdown immediately after its smoke check. SIGINT/SIGTERM abort startup or close a returned runner. There is no Playwright integration or browser test in this foundation.
+
+Diagnostics are retained: `report.json`, bounded stdout/stderr and timeline logs, bounded HTML sample, fixture-journal snapshots, and process ownership records. Logs/samples are capped at 2 MiB each; responses over 8 MiB fail validation. The report preserves final milestones independently of log caps. Fixture diagnostics are captured before shutdown and again before fixture closure. Cleanup validates PID/start identities, test-port release, original input hashes/dependency links, and previously visible service identities. Unavailable service PIDs permit only a listener check. Original active development caches are not required to remain identical.
+
+Font requests are logged separately (1 MiB cap; 100 requests retained in the report), with a bounded mock-evaluation log. Shutdown preserves these diagnostics, terminates verified Next children, then closes the owned font listener and catalogue fixture independently; cleanup errors reject shutdown. No browser/font rendering or repeat-run performance guarantee is implied.
+
+Validate font hashes, mappings and the raw route allowlist offline before a smoke launch:
+
+```bash
+pnpm --filter @hotlap/api exec tsx --test ../../tests/e2e/fixtures/catalogue-fonts.contract.ts
+```
+
+The child-only Node connection guard rejects ports 3000, 4000 and 5432. It is not an operating-system network sandbox. SIGKILL, abrupt host termination and direct `process.exit()` cannot guarantee asynchronous cleanup; inspect retained ownership identities before taking manual action. Never terminate processes by port number alone. Retained runtime directories are not automatically deleted.
+
 The Playwright configuration starts the existing API and web development commands. PostgreSQL must be available first:
 
 ```bash
