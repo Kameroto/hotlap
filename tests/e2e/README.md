@@ -120,3 +120,20 @@ Browser interception does not control Next.js server-side fetches. The tested `/
 Each test using the fixture attaches `keyboard-safety.json` with request decisions, page/request error summaries, active element, document focus, dialog/disclosure states and root scroll/overflow checkpoints. Failures also retain the configured screenshot and trace plus `keyboard-failure.png`. Artifacts live under `test-results/` and are linked in `playwright-report/index.html`. Test-specific TypeScript configuration reuses the web alias and installed Node types so fixture types are checked against actual application contracts.
 
 Production defects are not marked expected failures or fixed in this test batch. A nonzero suite result must be reviewed with its diagnostics.
+
+## Dedicated isolated catalogue browser smoke
+
+```bash
+pnpm exec playwright test --config tests/e2e/catalogue/playwright.catalogue.config.ts --list
+pnpm exec playwright test --config tests/e2e/catalogue/playwright.catalogue.config.ts --workers=1
+```
+
+This independent Chromium configuration discovers only `catalogue/*.isolated.ts`, which the default configuration does not discover. It runs one 1440×900 smoke test, one worker and zero retries. It does not define `webServer` or start normal development services. Ports 3100 and 4100 must be free.
+
+Global setup awaits the existing runner's complete catalogue/fixture/font readiness checks before returning an asynchronous teardown that awaits `stop()`. Existing startup deadlines and the maximum 240-second cold-readiness deadline apply; browser tests have a separate 30-second timeout. A suite-wide global deadline is disabled to avoid exhausting the same deadline during cleanup. Startup and teardown failures remain failures.
+
+Each invocation shares a coordinator-generated output path with workers under `<repository-root>/.hotlap-e2e-runtime/playwright-catalogue-<id>/` (`results/` and `report/`), separate from the runner's `catalogue-*` runtime. Attachments identify runner diagnostics and sanitized browser decisions; the runner also records `playwright-lifecycle.json` showing teardown invocation and awaited shutdown. Neither output location overlaps the original suite's outputs.
+
+The browser fixture reuses signed-out auth/cart mocks through `route.fallback()`, blocks other origins and unsupported API requests, and permits only the isolated Next.js HMR WebSocket. Browser routing does not intercept server-side Next.js fetches and is not an OS network sandbox; server-side isolation remains the runner's responsibility.
+
+No competing signal handlers are installed. During pending startup, the runner's signal-triggered abort follows its startup cleanup path. After readiness, runner shutdown is idempotent and the returned Playwright teardown awaits it. Normal interruption during setup or browser execution still requires separately authorized experimental acceptance testing. SIGKILL, forced supervisor termination or host failure cannot guarantee asynchronous cleanup; retain diagnostics and verify recorded PID/start-time ownership before recovery. Filtering, sorting, pagination and product-detail browser scenarios are outside this smoke check.
