@@ -1,12 +1,6 @@
 "use client";
 
 import {
-  usePathname,
-  useRouter,
-  useSearchParams,
-} from "next/navigation";
-
-import {
   BatteryCharging,
   Boxes,
   CarFront,
@@ -34,6 +28,7 @@ type CategoryOption = {
 };
 
 type ProductCategoryFilterProps = {
+  onSelect: (category?: string) => void;
   categories: CategoryOption[];
 
   selectedCategory:
@@ -140,52 +135,12 @@ function getCategoryIcon(
 }
 
 export default function ProductCategoryFilter({
+  onSelect,
   categories,
   selectedCategory,
 }: ProductCategoryFilterProps) {
-  const router =
-    useRouter();
-
-  const pathname =
-    usePathname();
-
-  const searchParams =
-    useSearchParams();
-
-  function updateCategory(
-    category:
-      ProductCategoryFilterValue,
-  ) {
-    const nextSearchParams =
-      new URLSearchParams(
-        searchParams.toString(),
-      );
-
-    if (
-      category === "all"
-    ) {
-      nextSearchParams.delete(
-        "category",
-      );
-    } else {
-      nextSearchParams.set(
-        "category",
-        category,
-      );
-    }
-
-    nextSearchParams.delete(
-      "page",
-    );
-
-    const queryString =
-      nextSearchParams.toString();
-
-    router.push(
-      queryString
-        ? `${pathname}?${queryString}`
-        : pathname,
-    );
+  function updateCategory(category: ProductCategoryFilterValue) {
+    onSelect(category === "all" ? undefined : category);
   }
 
   return (

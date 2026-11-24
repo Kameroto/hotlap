@@ -1,6 +1,8 @@
 "use client";
 
 import Link from "next/link";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import { useCallback, useLayoutEffect, useRef, useState, useTransition } from "react";
 
 import {
   SlidersHorizontal,
@@ -9,7 +11,9 @@ import {
 import ProductCard from "@/components/products/ProductCard";
 import ProductCategoryFilter from "@/components/products/ProductCategoryFilter";
 import ProductPagination from "@/components/products/ProductPagination";
-import ProductSearch from "@/components/products/ProductSearch";
+import ProductSearch, {
+  type ProductSearchHandle,
+} from "@/components/products/ProductSearch";
 import ProductSort from "@/components/products/ProductSort";
 
 import {
@@ -53,6 +57,68 @@ export default function ProductCatalog({
   query,
   categories,
 }: ProductCatalogProps) {
+  const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
+  const search = useRef<ProductSearchHandle>(null);
+  const pendingFilter = useRef<{ href: string; generation: number } | null>(null);
+  const filterGeneration = useRef(0);
+  const [renderedFilterGeneration, setRenderedFilterGeneration] = useState(0);
+  const [filterIsPending, startFilterTransition] = useTransition();
+
+  const isFilterNavigationPending = useCallback(() => pendingFilter.current !== null, []);
+
+  const cancelCatalogueWork = useCallback(() => {
+    pendingFilter.current = null;
+    search.current?.cancelPendingSearch();
+  }, []);
+
+  useLayoutEffect(() => {
+    window.addEventListener("popstate", cancelCatalogueWork);
+    return () => window.removeEventListener("popstate", cancelCatalogueWork);
+  }, [cancelCatalogueWork]);
+
+  useLayoutEffect(() => {
+    const intent = pendingFilter.current;
+    if (filterIsPending || intent?.generation !== renderedFilterGeneration) return;
+
+    // The transition can settle at a redirected URL or without changing the URL.
+    pendingFilter.current = null;
+    search.current?.settleFilterNavigation();
+  }, [renderedFilterGeneration, filterIsPending]);
+
+  function navigateFilter(filter: "category" | "sort", value?: string) {
+    const params = new URLSearchParams(searchParams.toString());
+    params.sort();
+    const committedQuery = params.toString();
+    const committedHref = committedQuery ? `${pathname}?${committedQuery}` : pathname;
+    const intent = pendingFilter.current;
+
+    if (intent) {
+      // Carry forward the other filter even when its push has not committed yet.
+      const pendingParams = new URL(intent.href, window.location.origin).searchParams;
+      const otherFilter = filter === "category" ? "sort" : "category";
+      const otherValue = pendingParams.get(otherFilter);
+      if (otherValue === null) params.delete(otherFilter);
+      else params.set(otherFilter, otherValue);
+    }
+
+    if (value === undefined) params.delete(filter);
+    else params.set(filter, value);
+    params.delete("page");
+    params.sort();
+    const queryString = params.toString();
+    const href = queryString ? `${pathname}?${queryString}` : pathname;
+    if (href === (intent?.href ?? committedHref)) return;
+
+    const generation = ++filterGeneration.current;
+    pendingFilter.current = { href, generation };
+    startFilterTransition(() => {
+      setRenderedFilterGeneration(generation);
+      router.push(href);
+    });
+  }
+
   const filtersAreActive =
     Boolean(
       query.search ||
@@ -89,18 +155,10 @@ export default function ProductCatalog({
   return (
     <div className="mt-10">
       <div className="rounded-2xl border border-white/8 bg-[#101316]/70 p-4 shadow-[0_12px_40px_rgba(0,0,0,0.18)] sm:p-5">
-        <ProductSearch
-          key={
-            query.search ??
-            ""
-          }
-          initialValue={
-            query.search ??
-            ""
-          }
-        />
+        <ProductSearch ref={search} isFilterNavigationPending={isFilterNavigationPending} />
 
         <ProductCategoryFilter
+          onSelect={category => navigateFilter("category", category)}
           categories={
             categories
           }
@@ -137,6 +195,7 @@ export default function ProductCatalog({
             {filtersAreActive && (
               <Link
                 href="/products"
+                onNavigate={cancelCatalogueWork}
                 className="w-fit rounded-md text-sm font-semibold text-primary outline-none transition-colors hover:text-primary/80 focus-visible:ring-2 focus-visible:ring-primary/60 focus-visible:ring-offset-2 focus-visible:ring-offset-background motion-reduce:transition-none"
               >
                 Clear filters
@@ -144,6 +203,7 @@ export default function ProductCatalog({
             )}
 
             <ProductSort
+              onSelect={sort => navigateFilter("sort", sort)}
               value={
                 query.sort ??
                 "featured"
@@ -198,6 +258,7 @@ export default function ProductCatalog({
 
           <Link
             href="/products"
+            onNavigate={cancelCatalogueWork}
             className={cn(
               buttonVariants({
                 variant:

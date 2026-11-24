@@ -1,69 +1,23 @@
 "use client";
 
 import {
-  usePathname,
-  useRouter,
-  useSearchParams,
-} from "next/navigation";
-
-import {
   DEFAULT_PRODUCT_SORT,
   sortOptions,
   type ProductSortOption,
 } from "@/types/product-catalog";
 
 type ProductSortProps = {
+  onSelect: (sort?: ProductSortOption) => void;
   value:
     ProductSortOption;
 };
 
 export default function ProductSort({
+  onSelect,
   value,
 }: ProductSortProps) {
-  const router =
-    useRouter();
-
-  const pathname =
-    usePathname();
-
-  const searchParams =
-    useSearchParams();
-
-  function handleSortChange(
-    nextSort:
-      ProductSortOption,
-  ) {
-    const nextSearchParams =
-      new URLSearchParams(
-        searchParams.toString(),
-      );
-
-    if (
-      nextSort ===
-      DEFAULT_PRODUCT_SORT
-    ) {
-      nextSearchParams.delete(
-        "sort",
-      );
-    } else {
-      nextSearchParams.set(
-        "sort",
-        nextSort,
-      );
-    }
-
-    nextSearchParams.delete(
-      "page",
-    );
-
-    const queryString =
-      nextSearchParams.toString();
-
-    router.push(
-      queryString
-        ? `${pathname}?${queryString}`
-        : pathname,
-    );
+  function handleSortChange(nextSort: ProductSortOption) {
+    onSelect(nextSort === DEFAULT_PRODUCT_SORT ? undefined : nextSort);
   }
 
   return (
