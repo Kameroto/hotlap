@@ -1,5 +1,9 @@
-import type { Page } from '@playwright/test';
-import { test, expect } from './catalogue-test';
+import type { CDPSession, Page, TestInfo } from '@playwright/test';
+import { test, expect, type CanonicalRedirectObservation } from './catalogue-test';
+import {
+  explicitDefaultsPath, explicitDefaultsTitle, isDiagnosticUrl,
+  type DocumentFields, type NavigationEvidence, type NavigationEvent,
+} from './canonical-redirect-classification';
 
 const featuredOrder = ['Fir', 'Alder', 'Cedar', 'Birch', 'Dune', 'Elm'];
 const unmatchedSearch = 'Zynthrax Nebuloom';
@@ -58,9 +62,170 @@ test.beforeEach(() => {
   test.setTimeout(60_000);
 });
 
-test('explicit defaults and unsupported query parameters are removed from the catalogue URL', async ({ page, safety }) => {
-  await openCatalogue(page, '/products?page=1&sort=featured&pageSize=48&tracking=e2e', safety.requests);
-  await expectDefaultCatalogue(page);
+async function observeCanonicalRedirect(
+  page: Page, testInfo: TestInfo, observation: CanonicalRedirectObservation, run: () => Promise<void>,
+) {
+  const limit = 128;
+  const events: (NavigationEvent & { sequence: number })[] = [];
+  const requests = new Map<string, DocumentFields>();
+  const errors: unknown[] = [];
+  let session: CDPSession | undefined;
+  let mainFrameId: string | undefined;
+  let scheduledUrl: string | undefined;
+  let truncated = false;
+  let observing = false;
+  let unrecognizedNavigation = false;
+  let committedUrl: string | undefined;
+  let setupComplete = false;
+  let sessionDetached = false;
+  let functionalAssertionsCompleted = false;
+
+  function record(event: NavigationEvent) {
+    if (!observing) return false;
+    if (events.length >= limit) {
+      truncated = true;
+      return false;
+    }
+    events.push({ sequence: events.length + 1, ...event });
+    return true;
+  }
+
+  function isObservedNavigation(frameId: string, url: string) {
+    if (!observing || frameId !== mainFrameId) return false;
+    if (isDiagnosticUrl(url)) return true;
+    unrecognizedNavigation = true;
+    return false;
+  }
+
+  try {
+    session = await page.context().newCDPSession(page);
+    await session.send('Page.enable');
+    const { frameTree } = await session.send('Page.getFrameTree');
+    mainFrameId = frameTree.frame.id;
+    committedUrl = frameTree.frame.url;
+
+    session.on('Page.frameRequestedNavigation', ({ frameId, url, reason, disposition }) => {
+      if (isObservedNavigation(frameId, url)) {
+        record({ event: 'Page.frameRequestedNavigation', frameId, url, reason, disposition });
+      }
+    });
+    session.on('Page.frameScheduledNavigation', ({ frameId, url, reason, delay }) => {
+      if (!observing || frameId !== mainFrameId) return;
+      scheduledUrl = isObservedNavigation(frameId, url) ? url : undefined;
+      if (scheduledUrl) record({ event: 'Page.frameScheduledNavigation', frameId, url, reason, delay });
+    });
+    session.on('Page.frameClearedScheduledNavigation', ({ frameId }) => {
+      if (frameId !== mainFrameId || !scheduledUrl) return;
+      record({ event: 'Page.frameClearedScheduledNavigation', frameId, url: scheduledUrl });
+      scheduledUrl = undefined;
+    });
+    session.on('Page.frameStartedNavigating', ({ frameId, loaderId, url, navigationType }) => {
+      if (isObservedNavigation(frameId, url)) {
+        record({ event: 'Page.frameStartedNavigating', frameId, loaderId, url, navigationType });
+      }
+    });
+    session.on('Page.frameNavigated', ({ frame, type }) => {
+      const url = frame.url + (frame.urlFragment ?? '');
+      if (isObservedNavigation(frame.id, url)) {
+        committedUrl = url;
+        if (frame.unreachableUrl) unrecognizedNavigation = true;
+        record({ event: 'Page.frameNavigated', frameId: frame.id, loaderId: frame.loaderId, url, navigationType: type });
+      }
+    });
+
+    session.on('Page.navigatedWithinDocument', ({ frameId, url }) => {
+      if (observing && frameId === mainFrameId && url !== committedUrl) unrecognizedNavigation = true;
+    });
+
+    session.on('Network.requestWillBeSent', event => {
+      const { requestId, frameId, loaderId, request, type, initiator, timestamp, wallTime, redirectResponse } = event;
+      if (!observing || !frameId || frameId !== mainFrameId || type !== 'Document') return;
+      // The approved streamed redirect does not reuse a request ID or carry an HTTP redirect response.
+      if (requests.has(requestId) || redirectResponse) unrecognizedNavigation = true;
+      if (!isObservedNavigation(frameId, request.url)) return;
+
+      const fields = { requestId, frameId, loaderId, url: request.url, resourceType: type, method: request.method };
+      const redirectFrom = redirectResponse && isDiagnosticUrl(redirectResponse.url) ? redirectResponse.url : undefined;
+      if (record({ event: 'Network.requestWillBeSent',
+        ...fields, timestamp, wallTime, initiatorType: initiator.type,
+        redirectFrom, redirectStatus: redirectFrom ? redirectResponse?.status : undefined,
+      })) {
+        requests.set(requestId, fields);
+      }
+    });
+    session.on('Network.responseReceived', ({ requestId, loaderId, timestamp, type, response }) => {
+      const request = requests.get(requestId);
+      if (!observing || !request) return;
+      if (type !== 'Document' || request.loaderId !== loaderId || request.url !== response.url) {
+        unrecognizedNavigation = true;
+        return;
+      }
+      record({ event: 'Network.responseReceived', ...request, timestamp, status: response.status });
+    });
+    session.on('Network.loadingFinished', ({ requestId, timestamp }) => {
+      const request = requests.get(requestId);
+      if (!request) return;
+      record({ event: 'Network.loadingFinished', ...request, timestamp });
+    });
+    session.on('Network.loadingFailed', ({ requestId, timestamp, errorText, canceled, blockedReason }) => {
+      const request = requests.get(requestId);
+      if (!request) return;
+      record({ event: 'Network.loadingFailed',
+        ...request, timestamp, canceled, blockedReason,
+        errorText: /^net::ERR_[A-Z0-9_]+$/.test(errorText) ? errorText : '[redacted]',
+      });
+    });
+
+    await session.send('Network.enable');
+    setupComplete = true;
+    observing = true;
+    observation.start();
+    await run();
+    functionalAssertionsCompleted = true;
+  } catch (error) {
+    errors.push(error);
+  } finally {
+    observing = false;
+    observation.stop();
+    const finalUrl = page.url();
+    if (session) {
+      try {
+        await session.detach();
+        sessionDetached = true;
+      } catch (error) {
+        errors.push(error);
+      }
+    }
+    const diagnostic: NavigationEvidence = {
+      mainFrameId, setupComplete, sessionDetached, eventLimit: limit, truncated, unrecognizedNavigation,
+      finalMainFrameUrl: isDiagnosticUrl(finalUrl) ? finalUrl : undefined,
+      events,
+    };
+    let attached = false;
+    try {
+      await testInfo.attach('canonical-redirect-navigation', {
+        contentType: 'application/json',
+        body: JSON.stringify(diagnostic, null, 2),
+      });
+      attached = true;
+    } catch (error) {
+      errors.push(error);
+    }
+    observation.complete(attached ? diagnostic : undefined, functionalAssertionsCompleted);
+  }
+
+  if (errors.length === 1) throw errors[0];
+  if (errors.length > 1) {
+    throw new AggregateError(errors, errors.map(error => String(error)).join('\n'));
+  }
+}
+
+test(explicitDefaultsTitle, async ({ page, safety, catalogueSafety }, testInfo) => {
+  const observation = catalogueSafety.authorizeCanonicalRedirect('explicit-defaults-redirect');
+  await observeCanonicalRedirect(page, testInfo, observation, async () => {
+    await openCatalogue(page, explicitDefaultsPath, safety.requests);
+    await expectDefaultCatalogue(page);
+  });
 });
 
 test('duplicate catalogue parameters retain only the first normalized search and category', async ({ page, safety }) => {
