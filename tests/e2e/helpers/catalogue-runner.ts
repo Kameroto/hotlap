@@ -7,7 +7,9 @@ import http from 'node:http';
 import net from 'node:net';
 import path from 'node:path';
 import { setTimeout as delay } from 'node:timers/promises';
-import { startCatalogueFixture } from '../fixtures/catalogue-api';
+import type { CategoriesResponse } from '../../../apps/web/lib/api/types';
+import type { ProductListResponse } from '../../../apps/web/types/product';
+import { resolveCatalogueProfile, startCatalogueFixture, type CatalogueProfile } from '../fixtures/catalogue-api';
 import { catalogueCategories, catalogueProducts } from '../fixtures/catalogue-data';
 import { loadCatalogueFonts, startCatalogueFontServer, writeCatalogueFontMock } from './catalogue-fonts';
 
@@ -85,8 +87,41 @@ function timeout(value: number | undefined): number {
   return result;
 }
 
+async function verifyPaginationFixture(url: string, signal: AbortSignal) {
+  async function readFixture<T>(route: string): Promise<T> {
+    const response = await fetch(`${url}${route}`, {
+      signal: AbortSignal.any([signal, AbortSignal.timeout(5000)]),
+    });
+    assert.equal(response.status, 200, `Pagination readiness request failed: ${route}`);
+    return await response.json() as T;
+  }
+
+  const categories = await readFixture<CategoriesResponse>('/api/v1/categories');
+  const expectedCategories = [
+    ['E2E Pagination Alpha', 'e2e-pagination-alpha', 14],
+    ['E2E Pagination Beta', 'e2e-pagination-beta', 2],
+  ];
+  assert.equal(categories.totalItems, 2);
+  assert.deepEqual(categories.categories.map(({ name, slug, productCount }) => [name, slug, productCount]),
+    expectedCategories);
+
+  const pages = [];
+  for (const [page, numbers, hasPreviousPage, hasNextPage] of [
+    [1, ['01', '02', '03', '04', '05', '06', '07', '08', '09', '10', '11', '12'], false, true],
+    [2, ['13', '14', '15', '16'], true, false],
+  ] as const) {
+    const body = await readFixture<ProductListResponse>(page === 1 ? '/api/v1/products' : '/api/v1/products?page=2');
+    assert.equal(body.filters.sort, 'featured');
+    assert.deepEqual(body.products.map(product => product.name), numbers.map(number => `E2E Pagination Product ${number}`));
+    assert.deepEqual(body.pagination, { page, pageSize: 12, totalItems: 16, totalPages: 2, hasPreviousPage, hasNextPage });
+    pages.push(body);
+  }
+  return { categories: categories.categories.map(category => category.name), pages };
+}
+
 /** Linux/WSL foundation: cold-validates the catalogue before returning a live handle. */
-export async function startCatalogueRunner(options: { coldTimeoutMs?: number } = {}) {
+export async function startCatalogueRunner(options: { coldTimeoutMs?: number; profile?: CatalogueProfile } = {}) {
+  const profile = resolveCatalogueProfile(options.profile);
   assert.equal(process.platform, 'linux', 'Catalogue process ownership requires Linux /proc');
   const coldTimeoutMs = timeout(options.coldTimeoutMs);
   const beforeServices = services();
@@ -99,7 +134,7 @@ export async function startCatalogueRunner(options: { coldTimeoutMs?: number } =
   const started = process.hrtime.bigint();
   const stamp = () => ({ utc: new Date().toISOString(), elapsedMs: Number(process.hrtime.bigint() - started) / 1e6 });
   const milestones: Record<string, unknown> = {};
-  const diagnostics: Record<string, unknown> = { runtimeDir, coldTimeoutMs, milestones, beforeServices, readiness: 'pending' };
+  const diagnostics: Record<string, unknown> = { runtimeDir, profile, coldTimeoutMs, milestones, beforeServices, readiness: 'pending' };
   const save = () => fs.writeFileSync(path.join(runtimeDir, 'report.json'), JSON.stringify(diagnostics, null, 2));
   const sizes = new Map<string, number>();
   let shutdownErrors: string[] | undefined;
@@ -273,12 +308,17 @@ export async function startCatalogueRunner(options: { coldTimeoutMs?: number } =
     const fontMockFile = writeCatalogueFontMock(fonts, fontServer.origin, runtimeDir);
     diagnostics.fonts = fontServer.diagnostics(); diagnostics.fontMockFile = fontMockFile;
     event('font-listener-ready', { origin: fontServer.origin, verifiedAssets: fonts.assets.length });
-    fixture = await startCatalogueFixture(4100); check();
+    fixture = await startCatalogueFixture(4100, { profile }); check();
     const health = await fetch(`${fixture.url}/__fixture/health`, { signal: AbortSignal.timeout(5000) });
     assert.equal(health.status, 200);
     const healthBody = await health.json() as { fixture: string; readOnly: boolean };
     assert.equal(healthBody.fixture, 'hotlap-catalogue'); assert.equal(healthBody.readOnly, true);
     diagnostics.fixtureHealth = healthBody;
+    const pagination = profile === 'pagination' ? await verifyPaginationFixture(fixture.url, abort.signal) : undefined;
+    if (pagination) diagnostics.paginationReadiness = pagination.pages.map(({ products, pagination }) => ({
+      products: products.map(product => product.name), pagination,
+    }));
+    // Snapshot after direct fixture probes so only Next reads count as storefront readiness evidence.
     const firstJournal = await journal('pre-next'); assert.ok(firstJournal); baseline = firstJournal.requests.at(-1)?.sequence ?? 0;
     event('fixture-ready');
     let ready = false; let tail = '';
@@ -333,10 +373,19 @@ export async function startCatalogueRunner(options: { coldTimeoutMs?: number } =
     } finally { clearTimeout(deadline); fs.closeSync(htmlFile); diagnostics.response = { bytes, chunks, sampled }; }
     check(); assert.equal(diagnostics.httpStatus, 200, 'Catalogue returned a non-200 response');
     const html = fs.readFileSync(path.join(runtimeDir, 'response-sample.html'), 'utf8');
-    for (const product of catalogueProducts) assert.ok(html.includes(product.name), `Missing fictional product: ${product.name}`);
-    for (const category of catalogueCategories.categories) assert.ok(html.includes(category.name), `Missing fictional category: ${category.name}`);
-    diagnostics.verifiedProducts = catalogueProducts.map(product => product.name);
-    diagnostics.verifiedCategories = catalogueCategories.categories.map(category => category.name);
+    const expectedProducts = (pagination ? pagination.pages[0].products : catalogueProducts).map(product => product.name);
+    const expectedCategories = pagination?.categories ?? catalogueCategories.categories.map(category => category.name);
+    if (pagination) {
+      // Compare rendered product headings, excluding names in serialized React payloads.
+      const renderedProducts = [...html.matchAll(/<h3\b[^>]*>(E2E Pagination Product \d{2})<\/h3>/g)]
+        .map(match => match[1]);
+      assert.deepEqual(renderedProducts, expectedProducts, 'Pagination storefront must render exactly the first page');
+    } else {
+      for (const product of expectedProducts) assert.ok(html.includes(product), `Missing fictional product: ${product}`);
+    }
+    for (const category of expectedCategories) assert.ok(html.includes(category), `Missing fictional category: ${category}`);
+    diagnostics.verifiedProducts = expectedProducts;
+    diagnostics.verifiedCategories = expectedCategories;
     const reads = await journal('readiness'); assert.ok(reads, 'Fixture request evidence unavailable');
     diagnostics.serverReads = reads.requests.filter(item => item.sequence > baseline && item.path.startsWith('/api/v1/'));
     for (const route of ['/api/v1/categories', '/api/v1/products']) assert.ok(reads.requests.some(item => item.sequence > baseline && item.path === route && item.method === 'GET' && item.status === 200), `Missing server-side fixture read: ${route}`);

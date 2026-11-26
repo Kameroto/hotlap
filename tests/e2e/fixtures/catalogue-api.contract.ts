@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { after, before, test } from 'node:test';
+import { after, before, describe, test } from 'node:test';
 import { createServer, request } from 'node:http';
 import type { ApiErrorResponse, CategoriesResponse } from '../../../apps/web/lib/api/types';
 import type { ProductDetailsResponse, ProductListResponse } from '../../../apps/web/types/product';
@@ -363,4 +363,114 @@ test('closing a fixture releases only its own listener; occupied ports are not r
   const disposable = await startCatalogueFixture(0);
   await disposable.close();
   await assert.rejects(fetch(`${disposable.url}/__fixture/health`));
+});
+
+describe('pagination fixture profile', () => {
+  let paginationFixture: Awaited<ReturnType<typeof startCatalogueFixture>>;
+  before(async () => { paginationFixture = await startCatalogueFixture(0, { profile: 'pagination' }); });
+  after(async () => { await paginationFixture?.close(); });
+
+  async function paginationListing(query: string): Promise<ProductListResponse> {
+    const response = await fetch(`${paginationFixture.url}/api/v1/products${query}`);
+    assert.equal(response.status, 200);
+    return response.json();
+  }
+
+  const firstFeatured = ['01', '02', '03', '04', '05', '06', '07', '08', '09', '10', '11', '12'];
+  const lastFeatured = ['13', '14', '15', '16'];
+
+  test('pagination categories and product identities are distinct from the default fixture', async () => {
+    const response = await fetch(`${paginationFixture.url}/api/v1/categories`);
+    assert.equal(response.status, 200);
+    const body: CategoriesResponse = await response.json();
+    assert.equal(body.totalItems, 2);
+    assert.deepEqual(body.categories.map(({ name, slug, productCount }) => [name, slug, productCount]), [
+      ['E2E Pagination Alpha', 'e2e-pagination-alpha', 14],
+      ['E2E Pagination Beta', 'e2e-pagination-beta', 2],
+    ]);
+    const { products } = await paginationListing('?pageSize=16');
+    assert.deepEqual(products.map(product => product.name),
+      [...firstFeatured, ...lastFeatured].map(number => `E2E Pagination Product ${number}`));
+    for (const key of ['id', 'slug', 'sku'] as const) {
+      assert.equal(new Set(products.map(product => product[key])).size, 16);
+      assert.ok(products.every(product => catalogueProducts.every(original => original[key] !== product[key])));
+    }
+    assert.ok(body.categories.every(category => catalogueCategories.categories.every(original => original.id !== category.id)));
+    assert.deepEqual(products.map(product => product.category.slug), [
+      ...Array<string>(14).fill('e2e-pagination-alpha'), 'e2e-pagination-beta', 'e2e-pagination-beta',
+    ]);
+    assert.ok(products.every(product => product.images[0].url === '/products/product-placeholder.svg'));
+  });
+
+  for (const [label, query, order, page, totalItems, totalPages, hasPreviousPage, hasNextPage] of [
+    ['featured first page', '', firstFeatured, 1, 16, 2, false, true],
+    ['featured second page', '?page=2', lastFeatured, 2, 16, 2, true, false],
+    ['Alpha first page', '?category=e2e-pagination-alpha', firstFeatured, 1, 14, 2, false, true],
+    ['Alpha second page', '?category=e2e-pagination-alpha&page=2', ['13', '14'], 2, 14, 2, true, false],
+    ['Beta only page', '?category=e2e-pagination-beta', ['15', '16'], 1, 2, 1, false, false],
+    ['ORBIT first page', '?search=ORBIT', firstFeatured, 1, 13, 2, false, true],
+    ['ORBIT second page', '?search=ORBIT&page=2', ['13'], 2, 13, 2, true, false],
+    ['ascending price first page', '?sort=price-asc', ['16', '15', '14', '13', '12', '11', '10', '09', '08', '07', '06', '05'], 1, 16, 2, false, true],
+    ['ascending price second page', '?sort=price-asc&page=2', ['04', '03', '02', '01'], 2, 16, 2, true, false],
+    ['Alpha ORBIT ascending first page', '?category=e2e-pagination-alpha&search=ORBIT&sort=price-asc', ['13', '12', '11', '10', '09', '08', '07', '06', '05', '04', '03', '02'], 1, 13, 2, false, true],
+    ['Alpha ORBIT ascending second page', '?category=e2e-pagination-alpha&search=ORBIT&sort=price-asc&page=2', ['01'], 2, 13, 2, true, false],
+    ['out-of-range page', '?page=99', [], 99, 16, 2, true, false],
+    ['Beta ORBIT zero results', '?category=e2e-pagination-beta&search=ORBIT', [], 1, 0, 0, false, false],
+  ] as const) {
+    test(label, async () => {
+      const body = await paginationListing(query);
+      assert.deepEqual(body.products.map(product => product.name), order.map(number => `E2E Pagination Product ${number}`));
+      assert.deepEqual(body.pagination, { page, pageSize: 12, totalItems, totalPages, hasPreviousPage, hasNextPage });
+    });
+  }
+
+  test('product detail and diagnostics use only the selected profile', async () => {
+    const detail = await fetch(`${paginationFixture.url}/api/v1/products/e2e-pagination-product-16`);
+    assert.equal(detail.status, 200);
+    const body: ProductDetailsResponse = await detail.json();
+    assert.equal(body.product.name, 'E2E Pagination Product 16');
+    for (const [url, otherSlug] of [
+      [paginationFixture.url, 'e2e-catalogue-alder'],
+      [fixture.url, 'e2e-pagination-product-16'],
+    ]) {
+      const response = await fetch(`${url}/api/v1/products/${otherSlug}`);
+      assert.equal(response.status, 404);
+      assert.equal((await response.json()).code, 'PRODUCT_NOT_FOUND');
+    }
+    await paginationListing('?category=e2e-pagination-alpha');
+    await paginationListing('?category=e2e-fixture-alpha');
+    const response = await fetch(`${paginationFixture.url}/__fixture/requests`);
+    assert.equal(response.status, 200);
+    const { requests } = await response.json() as {
+      requests: Array<{ path: string; status: number; query: Record<string, string> }>;
+    };
+    assert.ok(requests.some(entry =>
+      entry.path === '/api/v1/products/e2e-pagination-product-16' && entry.status === 200));
+    assert.ok(requests.some(entry =>
+      entry.path === '/api/v1/products/<unknown>' && entry.status === 404));
+    const categoryReads = requests.filter(entry => entry.path === '/api/v1/products' && entry.query.category);
+    assert.deepEqual(categoryReads.slice(-2).map(entry => entry.query.category),
+      ['e2e-pagination-alpha', '[redacted]']);
+  });
+
+  test('the default listener retains its six products while the pagination listener is active', async () => {
+    const body = await listing();
+    assert.deepEqual(identities(body), ['Fir', 'Alder', 'Cedar', 'Birch', 'Dune', 'Elm']);
+    assert.deepEqual(body.pagination, {
+      page: 1, pageSize: 12, totalItems: 6, totalPages: 1, hasPreviousPage: false, hasNextPage: false,
+    });
+    const response = await fetch(`${fixture.url}/api/v1/categories`);
+    assert.equal(response.status, 200);
+    assert.deepEqual(await response.json(), catalogueCategories);
+  });
+
+  test('invalid profiles are rejected by fixture startup', async () => {
+    for (const invalid of ['', 'unknown', '__proto__'] as const) {
+      await assert.rejects(async () => {
+        // @ts-expect-error Exercise invalid input at the runtime startup boundary.
+        const unexpected = await startCatalogueFixture(0, { profile: invalid });
+        await unexpected.close();
+      }, /Invalid catalogue fixture profile/);
+    }
+  });
 });

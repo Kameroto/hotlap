@@ -1,6 +1,6 @@
 import { randomUUID } from 'node:crypto';
 import { createServer } from 'node:http';
-import type { ApiErrorResponse } from '../../../apps/web/lib/api/types';
+import type { ApiErrorResponse, CategoriesResponse } from '../../../apps/web/lib/api/types';
 import type { ProductListResponse } from '../../../apps/web/types/product';
 import {
   productQuerySchema,
@@ -8,6 +8,19 @@ import {
   type ProductQuery,
 } from '../../../services/api/src/products/product-query-schema';
 import { catalogueCategories, catalogueProducts } from './catalogue-data';
+import { paginationCategories, paginationProducts } from './catalogue-pagination-data';
+
+const datasets = {
+  default: { categories: catalogueCategories, products: catalogueProducts },
+  pagination: { categories: paginationCategories, products: paginationProducts },
+};
+
+export type CatalogueProfile = keyof typeof datasets;
+
+export function resolveCatalogueProfile(value: unknown = 'default'): CatalogueProfile {
+  if (value === 'default' || value === 'pagination') return value;
+  throw new Error('Invalid catalogue fixture profile');
+}
 
 export const DIAGNOSTIC_LIMIT = 100;
 export const STOREFRONT_ORIGIN = 'http://127.0.0.1:3100';
@@ -20,9 +33,9 @@ type Diagnostic = {
   status: number;
 };
 
-function listProducts(query: ProductQuery): ProductListResponse {
+function listProducts(query: ProductQuery, datasetProducts: readonly ProductListResponse['products'][number][]): ProductListResponse {
   const search = query.search?.toLowerCase();
-  const products = catalogueProducts.filter(product =>
+  const products = datasetProducts.filter(product =>
     (!search || [product.name, product.brand, product.sku, product.shortDescription,
       product.description].some(value => value.toLowerCase().includes(search))) &&
     (!query.category || product.category.slug === query.category) &&
@@ -69,7 +82,7 @@ function queryObject(params: URLSearchParams): Record<string, string | string[]>
   }));
 }
 
-function safeQuery(params: URLSearchParams): Record<string, string> {
+function safeQuery(params: URLSearchParams, categories: CategoriesResponse): Record<string, string> {
   const result: Record<string, string> = {};
   for (const key of Object.keys(productQuerySchema.shape)) {
     if (!params.has(key)) continue;
@@ -78,14 +91,15 @@ function safeQuery(params: URLSearchParams): Record<string, string> {
       /^\d{1,8}(\.\d{1,2})?$/.test(value)) ||
       (key === 'sort' && productSortValues.some(sort => sort === value)) ||
       (['featured', 'inStock'].includes(key) && ['true', 'false'].includes(value)) ||
-      (key === 'category' && catalogueCategories.categories.some(category => category.slug === value));
+      (key === 'category' && categories.categories.some(category => category.slug === value));
     result[key] = safe && params.getAll(key).length === 1 ? value : '[redacted]';
   }
   return result;
 }
 
 /** Starts only an owned, loopback fixture. No application bootstrap or outbound requests. */
-export async function startCatalogueFixture(port = 0) {
+export async function startCatalogueFixture(port = 0, options: { profile?: CatalogueProfile } = {}) {
+  const { categories, products } = datasets[resolveCatalogueProfile(options.profile)];
   if (!Number.isInteger(port) || port < 0 || port > 65535) throw new Error('Invalid fixture port');
   const runId = randomUUID();
   const requests: Diagnostic[] = [];
@@ -104,13 +118,13 @@ export async function startCatalogueFixture(port = 0) {
     try { slug = decodeURIComponent(detailMatch?.[1] ?? '').trim(); }
     catch { invalidSlug = true; }
     const detail = !!detailMatch && slug !== 'featured';
-    const product = detail ? catalogueProducts.find(item => item.slug === slug) : undefined;
+    const product = detail ? products.find(item => item.slug === slug) : undefined;
     const known = knownPaths.includes(url.pathname) || detail;
     const path = knownPaths.includes(url.pathname) ? url.pathname : product ?
       `/api/v1/products/${product.slug}` :
       detail ? '/api/v1/products/<unknown>' : '/<unsupported>';
     const send = (status: number, body?: unknown) => {
-      requests.push({ sequence: ++sequence, method, path, query: safeQuery(url.searchParams), status });
+      requests.push({ sequence: ++sequence, method, path, query: safeQuery(url.searchParams, categories), status });
       if (requests.length > DIAGNOSTIC_LIMIT) requests.shift();
       response.writeHead(status, {
         'content-type': 'application/json; charset=utf-8',
@@ -165,13 +179,13 @@ export async function startCatalogueFixture(port = 0) {
     } else if (url.pathname === '/__fixture/requests') {
       send(200, { requests: [...requests], limit: DIAGNOSTIC_LIMIT });
     } else if (url.pathname === '/api/v1/categories') {
-      send(200, catalogueCategories);
+      send(200, categories);
     } else if (url.pathname === '/api/v1/products') {
       const parsed = productQuerySchema.safeParse(queryObject(url.searchParams));
       if (!parsed.success) {
         error(400, 'INVALID_PRODUCT_QUERY', 'The product filters are invalid.',
           parsed.error.flatten().fieldErrors);
-      } else send(200, listProducts(parsed.data));
+      } else send(200, listProducts(parsed.data, products));
     } else if (invalidSlug || !slug) {
       error(400, 'PRODUCT_SLUG_REQUIRED', 'A product slug is required.');
     } else if (product) send(200, { product });
