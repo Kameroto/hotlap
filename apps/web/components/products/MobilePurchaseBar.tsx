@@ -7,6 +7,7 @@ import {
 
 import AddToCartButton from "@/components/cart/AddToCartButton";
 import BuyNowButton from "@/components/cart/BuyNowButton";
+import { ProductQuantity, useProductQuantity } from "@/components/products/ProductQuantity";
 import ProductAvailability from "@/components/products/ProductAvailability";
 import ProductPrice from "@/components/products/ProductPrice";
 
@@ -21,6 +22,8 @@ type MobilePurchaseBarProps = {
 export default function MobilePurchaseBar({
   product,
 }: MobilePurchaseBarProps) {
+  const { quantity } = useProductQuantity();
+
   const [footerIsVisible, setFooterIsVisible] =
     useState(false);
 
@@ -70,11 +73,12 @@ export default function MobilePurchaseBar({
       className="fixed inset-x-0 bottom-0 z-40 border-t border-white/10 bg-[#090c0f]/95 px-4 pt-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] shadow-[0_-20px_50px_rgba(0,0,0,0.45)] backdrop-blur-xl md:hidden"
     >
       <div className="mx-auto max-w-xl">
-        <div className="mb-2.5 flex min-w-0 items-center justify-between gap-3">
+        <div className="mb-2.5 flex min-w-0 items-center justify-between gap-2 flex-wrap">
           <ProductPrice
             price={
               product.price
             }
+            compareAtPrice={product.compareAtPrice ?? undefined}
             currency="INR"
           />
 
@@ -91,8 +95,12 @@ export default function MobilePurchaseBar({
           />
         </div>
 
+        <div className="mb-2">
+          <ProductQuantity />
+        </div>
         <div className="grid grid-cols-2 gap-2.5">
           <AddToCartButton
+            quantity={quantity}
             productId={
               product.id
             }

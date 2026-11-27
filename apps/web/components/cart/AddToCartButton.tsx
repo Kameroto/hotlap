@@ -29,6 +29,7 @@ import {
 
 import {
   getProductPurchaseState,
+  getMaximumProductAddition,
 } from "@/lib/product-purchase-state";
 
 import {
@@ -40,6 +41,7 @@ type AddToCartButtonProps = {
   productName: string;
   stockQuantity: number;
   className?: string;
+  quantity?: number | null;
   size?:
     | "default"
     | "sm"
@@ -50,6 +52,7 @@ export default function AddToCartButton({
   productId,
   productName,
   stockQuantity,
+  quantity = 1,
   className,
   size = "default",
 }: AddToCartButtonProps) {
@@ -179,6 +182,9 @@ export default function AddToCartButton({
       return;
     }
 
+    const maximum = getMaximumProductAddition(stockQuantity, currentCartItem?.quantity ?? 0);
+    if (quantity === null || !Number.isInteger(quantity) || quantity < 1 || quantity > maximum) return;
+
     actionIsInFlight.current =
       true;
     setActionIsPending(true);
@@ -187,7 +193,7 @@ export default function AddToCartButton({
       const itemWasAdded =
         await addItem(
           productId,
-          1,
+          quantity,
         );
 
       if (!itemWasAdded) {
@@ -236,7 +242,9 @@ export default function AddToCartButton({
         loadStatus !== "loaded" ||
         productIsPending ||
         actionIsPending ||
-        !purchaseState.canAddToCart
+        !purchaseState.canAddToCart ||
+        quantity === null || !Number.isInteger(quantity) || quantity < 1 ||
+        quantity > getMaximumProductAddition(stockQuantity, purchaseState.cartQuantity)
       }
       onClick={() => {
         void handleAddToCart();

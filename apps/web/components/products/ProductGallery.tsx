@@ -261,7 +261,8 @@ export default function ProductGallery({
     showPrevious,
   ]);
 
-  function openLightbox() {
+  function openLightbox(event: React.MouseEvent<HTMLButtonElement>) {
+    lightboxTriggerReference.current = event.currentTarget;
     setLightboxIsOpen(true);
   }
 
@@ -283,9 +284,6 @@ export default function ProductGallery({
         <div className="pointer-events-none absolute top-1/2 left-1/2 size-[420px] -translate-x-1/2 -translate-y-1/2 rounded-full bg-primary/[0.055] blur-[110px]" />
 
         <button
-          ref={
-            lightboxTriggerReference
-          }
           type="button"
           onClick={
             openLightbox

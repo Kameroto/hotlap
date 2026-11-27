@@ -12,6 +12,7 @@ import {
 
 import AddToCartButton from "@/components/cart/AddToCartButton";
 import BuyNowButton from "@/components/cart/BuyNowButton";
+import { ProductQuantity, useProductQuantity } from "@/components/products/ProductQuantity";
 import ProductAvailability from "@/components/products/ProductAvailability";
 import ProductPrice from "@/components/products/ProductPrice";
 import ProductQuickSpecs from "@/components/products/ProductQuickSpecs";
@@ -41,6 +42,8 @@ type ProductPurchasePanelProps = {
 export default function ProductPurchasePanel({
   product,
 }: ProductPurchasePanelProps) {
+  const { quantity } = useProductQuantity();
+
   const {
     isSaved:
       productIsInWishlist,
@@ -57,7 +60,7 @@ export default function ProductPurchasePanel({
   });
 
   return (
-    <div className="lg:sticky lg:top-28">
+    <section aria-label="Product purchase" className="lg:sticky lg:top-28">
       <div className="rounded-2xl border border-white/10 bg-[#101316] p-5 shadow-[0_24px_70px_rgba(0,0,0,0.3)] sm:p-7">
         <div className="flex flex-wrap items-center gap-2">
           <span className="hotlap-supporting-text font-bold uppercase tracking-[0.16em] text-primary">
@@ -234,7 +237,9 @@ export default function ProductPurchasePanel({
           </Button>
         </div>
 
+        <ProductQuantity />
         <AddToCartButton
+          quantity={quantity}
           productId={
             product.id
           }
@@ -284,7 +289,7 @@ export default function ProductPurchasePanel({
           </Link>
         </div>
       </div>
-    </div>
+    </section>
   );
 }
 
