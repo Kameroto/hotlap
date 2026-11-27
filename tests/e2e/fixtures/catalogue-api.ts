@@ -9,16 +9,18 @@ import {
 } from '../../../services/api/src/products/product-query-schema';
 import { catalogueCategories, catalogueProducts } from './catalogue-data';
 import { paginationCategories, paginationProducts } from './catalogue-pagination-data';
+import { detailCategories, detailProducts, slowDetailSlug, unavailableDetailSlug } from './catalogue-detail-data';
 
 const datasets = {
   default: { categories: catalogueCategories, products: catalogueProducts },
+  'product-detail': { categories: detailCategories, products: detailProducts },
   pagination: { categories: paginationCategories, products: paginationProducts },
 };
 
 export type CatalogueProfile = keyof typeof datasets;
 
 export function resolveCatalogueProfile(value: unknown = 'default'): CatalogueProfile {
-  if (value === 'default' || value === 'pagination') return value;
+  if (value === 'default' || value === 'pagination' || value === 'product-detail') return value;
   throw new Error('Invalid catalogue fixture profile');
 }
 
@@ -99,7 +101,8 @@ function safeQuery(params: URLSearchParams, categories: CategoriesResponse): Rec
 
 /** Starts only an owned, loopback fixture. No application bootstrap or outbound requests. */
 export async function startCatalogueFixture(port = 0, options: { profile?: CatalogueProfile } = {}) {
-  const { categories, products } = datasets[resolveCatalogueProfile(options.profile)];
+  const profile = resolveCatalogueProfile(options.profile);
+  const { categories, products } = datasets[profile];
   if (!Number.isInteger(port) || port < 0 || port > 65535) throw new Error('Invalid fixture port');
   const runId = randomUUID();
   const requests: Diagnostic[] = [];
@@ -119,9 +122,10 @@ export async function startCatalogueFixture(port = 0, options: { profile?: Catal
     catch { invalidSlug = true; }
     const detail = !!detailMatch && slug !== 'featured';
     const product = detail ? products.find(item => item.slug === slug) : undefined;
+    const detailFailure = profile === 'product-detail' && detail && slug === unavailableDetailSlug;
     const known = knownPaths.includes(url.pathname) || detail;
-    const path = knownPaths.includes(url.pathname) ? url.pathname : product ?
-      `/api/v1/products/${product.slug}` :
+    const path = knownPaths.includes(url.pathname) ? url.pathname : product || detailFailure ?
+      `/api/v1/products/${slug}` :
       detail ? '/api/v1/products/<unknown>' : '/<unsupported>';
     const send = (status: number, body?: unknown) => {
       requests.push({ sequence: ++sequence, method, path, query: safeQuery(url.searchParams, categories), status });
@@ -188,8 +192,17 @@ export async function startCatalogueFixture(port = 0, options: { profile?: Catal
       } else send(200, listProducts(parsed.data, products));
     } else if (invalidSlug || !slug) {
       error(400, 'PRODUCT_SLUG_REQUIRED', 'A product slug is required.');
-    } else if (product) send(200, { product });
-    else error(404, 'PRODUCT_NOT_FOUND', 'The requested product was not found.');
+    } else if (detailFailure) error(503, 'FIXTURE_DETAIL_UNAVAILABLE', 'Synthetic detail service failure.');
+    else if (product) {
+      if (profile === 'product-detail' && slug === slowDetailSlug) {
+        // Bound the streamed loading-state fixture without sleeping in browser tests.
+        const timer = setTimeout(() => send(200, { product }), 3500);
+        response.once('close', () => clearTimeout(timer));
+      } else if (profile === 'product-detail') {
+        const images = [...product.images].sort((a, b) => Number(b.isPrimary) - Number(a.isPrimary) || a.sortOrder - b.sortOrder);
+        send(200, { product: { ...product, images } });
+      } else send(200, { product });
+    } else error(404, 'PRODUCT_NOT_FOUND', 'The requested product was not found.');
   });
   await new Promise<void>((resolve, reject) => {
     server.once('error', reject);

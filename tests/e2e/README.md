@@ -137,3 +137,36 @@ Each invocation shares a coordinator-generated output path with workers under `<
 The browser fixture reuses signed-out auth/cart mocks through `route.fallback()`, blocks other origins and unsupported API requests, and permits only the isolated Next.js HMR WebSocket. Browser routing does not intercept server-side Next.js fetches and is not an OS network sandbox; server-side isolation remains the runner's responsibility.
 
 No competing signal handlers are installed. During pending startup, the runner's signal-triggered abort follows its startup cleanup path. After readiness, runner shutdown is idempotent and the returned Playwright teardown awaits it. Normal interruption during setup or browser execution still requires separately authorized experimental acceptance testing. SIGKILL, forced supervisor termination or host failure cannot guarantee asynchronous cleanup; retain diagnostics and verify recorded PID/start-time ownership before recovery. Filtering, sorting, pagination and product-detail browser scenarios are outside this smoke check.
+
+### Isolated product detail
+
+The default catalogue configuration covers listing, category, sorting, search, focus,
+history and canonicalization. The pagination configuration selects a separate
+sixteen-product fixture for desktop/mobile pagination, filter resets and history.
+The product-detail configuration selects synthetic product and gallery records, using
+the same runner, deterministic fonts, loopback-only network restrictions and cleanup.
+Run the three Chromium profiles sequentially with one worker because they share
+ports 3100 and 4100.
+
+```sh
+pnpm exec playwright test --config tests/e2e/catalogue/playwright.product-detail.config.ts --workers=1
+pnpm exec playwright test --config tests/e2e/catalogue/playwright.catalogue.config.ts --workers=1
+pnpm exec playwright test --config tests/e2e/catalogue/playwright.catalogue-pagination.config.ts --workers=1
+pnpm --filter @hotlap/api exec tsx --test ../../tests/e2e/fixtures/product-detail.contract.ts
+pnpm --filter @hotlap/api exec tsx --test ../../tests/e2e/fixtures/catalogue-api.contract.ts ../../tests/e2e/catalogue/canonical-redirect-classification.contract.ts
+```
+
+The fixture API remains read-only. The product-detail browser fixture handles only
+its explicitly enabled synthetic auth, cart and wishlist routes. Cart additions
+are fulfilled in memory for each test and never forwarded. The controlled error
+cases use exact synthetic slugs and expected response statuses. Inspect safety
+attachments and runner cleanup before starting another browser profile. Canonical
+redirect recovery remains limited to the authorized default regression test, and
+the live acceptance branch runs only when Chromium naturally produces the precise
+supersession sequence.
+
+### Working roadmap
+
+UI.7 catalogue coverage precedes product detail. Subsequent UI.7 work can extend
+cart and checkout coverage behind similarly isolated boundaries. This is a working
+sequence. Phase 4C.3 remains paused pending its documented scope and authorization.

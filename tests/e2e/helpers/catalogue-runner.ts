@@ -11,6 +11,7 @@ import type { CategoriesResponse } from '../../../apps/web/lib/api/types';
 import type { ProductListResponse } from '../../../apps/web/types/product';
 import { resolveCatalogueProfile, startCatalogueFixture, type CatalogueProfile } from '../fixtures/catalogue-api';
 import { catalogueCategories, catalogueProducts } from '../fixtures/catalogue-data';
+import { detailCategories, detailProducts, detailSlug } from '../fixtures/catalogue-detail-data';
 import { loadCatalogueFonts, startCatalogueFontServer, writeCatalogueFontMock } from './catalogue-fonts';
 
 const root = path.resolve(__dirname, '../../..');
@@ -353,10 +354,11 @@ export async function startCatalogueRunner(options: { coldTimeoutMs?: number; pr
     const htmlFile = fs.openSync(path.join(runtimeDir, 'response-sample.html'), 'w');
     let bytes = 0; let sampled = 0; let chunks = 0;
     const deadline = setTimeout(() => { event('readiness-timeout'); abort.abort(new Error(`Catalogue cold readiness exceeded ${coldTimeoutMs}ms`)); }, coldTimeoutMs);
+    const readinessPath = profile === 'product-detail' ? `/products/${detailSlug}` : '/products';
     try {
-      event('http-start', { path: '/products' });
+      event('http-start', { path: readinessPath });
       await new Promise<void>((resolve, reject) => {
-        const request = http.get('http://127.0.0.1:3100/products', { signal: abort.signal }, response => {
+        const request = http.get(`http://127.0.0.1:3100${readinessPath}`, { signal: abort.signal }, response => {
           diagnostics.httpStatus = response.statusCode;
           event('http-headers', { status: response.statusCode, contentType: response.headers['content-type'] });
           response.on('data', (chunk: Buffer) => {
@@ -373,8 +375,13 @@ export async function startCatalogueRunner(options: { coldTimeoutMs?: number; pr
     } finally { clearTimeout(deadline); fs.closeSync(htmlFile); diagnostics.response = { bytes, chunks, sampled }; }
     check(); assert.equal(diagnostics.httpStatus, 200, 'Catalogue returned a non-200 response');
     const html = fs.readFileSync(path.join(runtimeDir, 'response-sample.html'), 'utf8');
-    const expectedProducts = (pagination ? pagination.pages[0].products : catalogueProducts).map(product => product.name);
-    const expectedCategories = pagination?.categories ?? catalogueCategories.categories.map(category => category.name);
+    const expectedProducts = (profile === 'product-detail' ? detailProducts.slice(0, 1) : pagination ? pagination.pages[0].products : catalogueProducts).map(product => product.name);
+    const expectedCategories = pagination?.categories ?? (profile === 'product-detail'
+      ? detailCategories.categories.slice(0, 1) : catalogueCategories.categories).map(category => category.name);
+    if (profile === 'product-detail') {
+      assert.match(html, /<h1\b[^>]*>E2E Detail Discount<\/h1>/);
+      assert.ok(html.includes('E2E-DETAIL-1') && html.includes('Fictional primary angle'));
+    }
     if (pagination) {
       // Compare rendered product headings, excluding names in serialized React payloads.
       const renderedProducts = [...html.matchAll(/<h3\b[^>]*>(E2E Pagination Product \d{2})<\/h3>/g)]
@@ -388,7 +395,8 @@ export async function startCatalogueRunner(options: { coldTimeoutMs?: number; pr
     diagnostics.verifiedCategories = expectedCategories;
     const reads = await journal('readiness'); assert.ok(reads, 'Fixture request evidence unavailable');
     diagnostics.serverReads = reads.requests.filter(item => item.sequence > baseline && item.path.startsWith('/api/v1/'));
-    for (const route of ['/api/v1/categories', '/api/v1/products']) assert.ok(reads.requests.some(item => item.sequence > baseline && item.path === route && item.method === 'GET' && item.status === 200), `Missing server-side fixture read: ${route}`);
+    for (const route of ['/api/v1/categories', '/api/v1/products',
+      ...(profile === 'product-detail' ? [`/api/v1/products/${detailSlug}`] : [])]) assert.ok(reads.requests.some(item => item.sequence > baseline && item.path === route && item.method === 'GET' && item.status === 200), `Missing server-side fixture read: ${route}`);
     assert.ok(reads.requests.every(item => item.method === 'GET' && item.status === 200), 'Unexpected fixture request');
     fontServer.verifyReadiness(); diagnostics.fonts = fontServer.diagnostics();
     check(); diagnostics.readiness = 'passed'; event('catalogue-ready'); save(); published = true;
